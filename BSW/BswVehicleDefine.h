@@ -24,7 +24,7 @@
 
 #define PWMFREQ             70000.f
 #define PWMTS               1.429e-5f
-#define ISRPWMEVTNUM        4.f
+#define ISRPWMEVTNUM        1.f
 #define ISRFREQ             PWMFREQ/ISRPWMEVTNUM
 #define ISRTS               PWMTS*ISRPWMEVTNUM
 

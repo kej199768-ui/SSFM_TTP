@@ -165,27 +165,34 @@ void BswAdcIsrOffsetCalc()
 
 void BswAdcIsrCalc()
 {
-    if(giAdcoffsetCplFlag == TRUE)
-    {
-        gfCurrRaw[0]    = (AdcbResultRegs.ADCRESULT0 + AdcbResultRegs.ADCRESULT1) * 0.5;        //PFC Inductor Current
-        gfVoltRaw[0]    = (AdcbResultRegs.ADCRESULT2 + AdcbResultRegs.ADCRESULT3) * 0.5;        //AC Input Voltage
-        gfVoltRaw[1]    = (AdcbResultRegs.ADCRESULT4 + AdcbResultRegs.ADCRESULT5) * 0.5;        //DC Link Output Voltage
+    gfCurrRaw[0]    = (AdcbResultRegs.ADCRESULT0 + AdcbResultRegs.ADCRESULT1) * 0.5;        //PFC Inductor Current
+    gfVoltRaw[0]    = (AdcbResultRegs.ADCRESULT2 + AdcbResultRegs.ADCRESULT3) * 0.5;        //AC Input Voltage
+    gfVoltRaw[1]    = (AdcbResultRegs.ADCRESULT4 + AdcbResultRegs.ADCRESULT5) * 0.5;        //DC Link Output Voltage
 
-        gfCurrCal[0]    = (gfCurrRaw[0] - gfPfcCurrOffsetCal) * gfPfcCurrAdcGainCal;
-        gfVoltCal[0]    = (gfVoltRaw[0] - gfPfcInVoltOffsetCal) * gfPfcInVoltAdcGainCal;
-        gfVoltCal[1]    = (gfVoltRaw[1] - gfPfcOutVoltOffsetCal) * gfPfcOutVoltAdcGainCal;
-
-//        gfCurrCal[0]    = (gfCurrRaw[0] - gfAdcResultOffset[0]) * gfPfcCurrAdcGainCal;
-//        gfVoltCal[0]    = (gfVoltRaw[0] - gfAdcResultOffset[1]) * gfPfcInVoltAdcGainCal;
-//        gfVoltCal[0]    = (gfVoltRaw[0] - 2103.f) * gfPfcInVoltAdcGainCal;
-//        gfVoltCal[1]    = (gfVoltRaw[1] - gfAdcResultOffset[2]) * gfPfcOutVoltAdcGainCal;
-//        gfVoltCal[1]    = gfVoltRaw[1] * gfPfcOutVoltAdcGainCal;
-
-//        gfCurrCal[0]    = (gfCurrRaw[0] - 2047.) * gfPfcCurrAdcGainCal;
-//        gfVoltCal[0]    = (gfVoltRaw[0] - 2102.) * gfPfcInVoltAdcGainCal;
-//        gfVoltCal[1]    = (gfVoltRaw[1] - 0.) * gfPfcOutVoltAdcGainCal;
-
-    }
+    gfCurrCal[0]    = (gfCurrRaw[0] - gfPfcCurrOffsetCal) * gfPfcCurrAdcGainCal;
+    gfVoltCal[0]    = (gfVoltRaw[0] - gfPfcInVoltOffsetCal) * gfPfcInVoltAdcGainCal;
+    gfVoltCal[1]    = (gfVoltRaw[1] - gfPfcOutVoltOffsetCal) * gfPfcOutVoltAdcGainCal;
+//    if(giAdcoffsetCplFlag == TRUE)
+//    {
+//        gfCurrRaw[0]    = (AdcbResultRegs.ADCRESULT0 + AdcbResultRegs.ADCRESULT1) * 0.5;        //PFC Inductor Current
+//        gfVoltRaw[0]    = (AdcbResultRegs.ADCRESULT2 + AdcbResultRegs.ADCRESULT3) * 0.5;        //AC Input Voltage
+//        gfVoltRaw[1]    = (AdcbResultRegs.ADCRESULT4 + AdcbResultRegs.ADCRESULT5) * 0.5;        //DC Link Output Voltage
+//
+//        gfCurrCal[0]    = (gfCurrRaw[0] - gfPfcCurrOffsetCal) * gfPfcCurrAdcGainCal;
+//        gfVoltCal[0]    = (gfVoltRaw[0] - gfPfcInVoltOffsetCal) * gfPfcInVoltAdcGainCal;
+//        gfVoltCal[1]    = (gfVoltRaw[1] - gfPfcOutVoltOffsetCal) * gfPfcOutVoltAdcGainCal;
+//
+////        gfCurrCal[0]    = (gfCurrRaw[0] - gfAdcResultOffset[0]) * gfPfcCurrAdcGainCal;
+////        gfVoltCal[0]    = (gfVoltRaw[0] - gfAdcResultOffset[1]) * gfPfcInVoltAdcGainCal;
+////        gfVoltCal[0]    = (gfVoltRaw[0] - 2103.f) * gfPfcInVoltAdcGainCal;
+////        gfVoltCal[1]    = (gfVoltRaw[1] - gfAdcResultOffset[2]) * gfPfcOutVoltAdcGainCal;
+////        gfVoltCal[1]    = gfVoltRaw[1] * gfPfcOutVoltAdcGainCal;
+//
+////        gfCurrCal[0]    = (gfCurrRaw[0] - 2047.) * gfPfcCurrAdcGainCal;
+////        gfVoltCal[0]    = (gfVoltRaw[0] - 2102.) * gfPfcInVoltAdcGainCal;
+////        gfVoltCal[1]    = (gfVoltRaw[1] - 0.) * gfPfcOutVoltAdcGainCal;
+//
+//    }
 }
 
 

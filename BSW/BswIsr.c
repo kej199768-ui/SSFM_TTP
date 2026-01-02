@@ -54,7 +54,7 @@ __interrupt void adcb1_isr()
 //    EPwm4Regs.TZCLR.bit.OST                 = 1;
 
 //    DELAY_US(15);
-    BswAdcIsrOffsetCalc();
+//    BswAdcIsrOffsetCalc();
     BswAdcIsrCalc();
     ItrCom_AswIsrCtr();
 
@@ -74,31 +74,54 @@ __interrupt void adcb1_isr()
 __interrupt void Timer1_Task_100us_isr(void)
 {
     EINT;
-    if(giAdcoffsetCplFlag == TRUE)
+    BswTask100us();
+
+    BswTask1msCnt++;
+    if(BswTask1msCnt >= 10 )
     {
-        BswTask100us();
-
-        BswTask1msCnt++;
-        if(BswTask1msCnt >= 10 )
-        {
-            BswTask1msCnt = 0;
-            BswTask1ms();
-        }
-
-        BswTask10msCnt++;
-        if(BswTask10msCnt >= 100)
-        {
-            BswTask10msCnt = 0;
-            BswTask10ms();
-        }
-
-        BswTask100msCnt++;
-        if(BswTask100msCnt >= 1000)
-        {
-            BswTask100msCnt = 0;
-            BswTask100ms();
-        }
+        BswTask1msCnt = 0;
+        BswTask1ms();
     }
+
+    BswTask10msCnt++;
+    if(BswTask10msCnt >= 100)
+    {
+        BswTask10msCnt = 0;
+        BswTask10ms();
+    }
+
+    BswTask100msCnt++;
+    if(BswTask100msCnt >= 1000)
+    {
+        BswTask100msCnt = 0;
+        BswTask100ms();
+    }
+//
+//    if(giAdcoffsetCplFlag == TRUE)
+//    {
+//        BswTask100us();
+//
+//        BswTask1msCnt++;
+//        if(BswTask1msCnt >= 10 )
+//        {
+//            BswTask1msCnt = 0;
+//            BswTask1ms();
+//        }
+//
+//        BswTask10msCnt++;
+//        if(BswTask10msCnt >= 100)
+//        {
+//            BswTask10msCnt = 0;
+//            BswTask10ms();
+//        }
+//
+//        BswTask100msCnt++;
+//        if(BswTask100msCnt >= 1000)
+//        {
+//            BswTask100msCnt = 0;
+//            BswTask100ms();
+//        }
+//    }
 
 }
 
