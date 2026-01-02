@@ -1,0 +1,170 @@
+/*============================================================================
+	Includes
+============================================================================*/
+#include "FdiagCal.h"
+/*============================================================================
+	Macros
+============================================================================*/
+
+/*============================================================================
+	Enumerations
+============================================================================*/
+
+/*============================================================================
+	Data Structures
+============================================================================*/
+
+/*============================================================================
+	Global variables
+============================================================================*/
+//Sensor diag
+float gfAdcSnsrVoltHiFltCal	= 4013.f;		//4095*0.98 = 4013.
+float gfAdcSnsrVoltLoFltCal = 10.f;			//4095*0.01 = 41.
+
+
+//Current sensor diagnosis
+Uint16 giCurrSnsr_VoltHiFlt_TimerCal		= 100U;		//100x1ms = 100ms 유지시 고장
+Uint16 giCurrSnsr_VoltLoFlt_TimerCal		= 100U;		//100x1ms = 100ms 유지시 고장
+Uint16 giCurrSnsr_RationalFlt_TimerCal		= 1000U;		//100x1ms = 100ms 유지시 고장
+float gfCurrSnsr_RationalFlt_Cal[CurrSnsrNum] = { 10.0f, 10.0f };		//Rational FLT 10A 차이 발생
+
+//Current diagnosis
+float gfIccuCurr_CurrHiFlt_Cal[CurrSnsrNum] = { 10.0f, 200.0f };		//50A
+Uint16 giCurr_Oc_Resume_TimeCal				= 100U;		//100x1ms = 100ms 재기동
+Uint16 giCurr_Oc_count_MaxDTCCal			= 10U;		// 10회
+Uint16 giCurr_HwOc_HealCnt_TimerCal			= 10U;		//10x100ms = 1초 healing
+
+
+//Volt sensor diag
+Uint16 giVoltSnsr_VoltHiFlt_TimerCal		= 100U;		//100x1ms = 100ms 유지시 고장
+Uint16 giVoltSnsr_VoltLoFlt_TimerCal		= 100U;		//100x1ms = 100ms 유지시 고장
+Uint16 giVoltSnsr_RationalFlt_TimerCal		= 1000U;		//100x1ms = 100ms 유지시 고장
+float gfVoltSnsr_RationalFlt_Cal[VoltSnsrNum] = { 20.0f, 20.0f, 20.0f };		// Rational FLT 20V 차이 발생
+
+//Volt diag
+float gfVolt_VoltHiFlt_Cal[VoltSnsrNum]		= { 410.0f, 790.0f, 870.0f };	//입력전압, DClink 전압, BAT 전압
+float gfVolt_VoltLowFlt_Cal[VoltSnsrNum]	= { 230.0f, 350.0f, 200.0f};
+Uint16 giVolt_Ov_TimerCal					= 100U;			//100x1ms = 100ms 재기동
+Uint16 giVolt_Ov_count_MaxDTCCal		    = 10U;			//10회 고장시 DTC
+Uint16 giVolt_Ov_HealCnt_TimerCal			= 10U;			//10x100ms = 1초 healing
+Uint16 giVolt_Uv_TimerCal					= 100U;			//100x1ms = 100ms 재기동
+
+//AuxBatvolt sensor diag
+Uint16 giAuxBatVoltSnsr_VoltHiFlt_TimerCal	= 100U;		//100x1ms = 100ms 유지시 고장
+Uint16 giAuxBatVoltSnsr_VoltLoFlt_TimerCal	= 100U;		//100x1ms = 100ms 유지시 고장
+Uint16 giAuxBatVoltSnsr_RationalFlt_TimerCal = 100U;		//100x1ms = 100ms 유지시 고장
+float gfAuxBatVoltSnsr_RationalFlt_Cal		= 2.0f;			// Rational FLT 20V 차이 발생
+
+//AuxBatvolt diag
+float gfAuxBatVolt_VoltHiFlt_Cal			= 22.0f;
+float gfAuxBatVolt_VoltLowFlt_Cal			= 6.5f;
+float gfAuxBatVolt_VoltHiFltClr_Cal			= 20.0f;
+float gfAuxBatVolt_VoltLowFltClr_Cal		= 7.0f;
+Uint16 giAuxBatVolt_SwOv_TimerCal			= 100U;				//100x1ms = 100ms 재기동
+Uint16 giAuxBatVolt_SwUv_TimerCal			= 100U;				//100x1ms = 100ms 재기동
+
+
+//Smpsvolt sensor diag
+Uint16 giSmpsVoltSnsr_VoltHiFlt_TimerCal	= 100U;		//100x1ms = 100ms 유지시 고장
+Uint16 giSmpsVoltSnsr_VoltLoFlt_TimerCal	= 100U;		//100x1ms = 100ms 유지시 고장
+Uint16 giSmpsVoltSnsr_RationalFlt_TimerCal	= 100U;		//100x1ms = 100ms 유지시 고장
+float gfSmpsVoltSnsr_RationalFlt_Cal		= 2.0f;			// Rational FLT 20V 차이 발생
+
+//Smpsvolt diag
+float gfSmpsVolt_VoltHiFlt_Cal				= 22.0f;
+float gfSmpsVolt_VoltLowFlt_Cal				= 6.5f;
+float gfSmpsVolt_VoltHiFltClr_Cal			= 20.f;
+float gfSmpsVolt_VoltLowFltClr_Cal			= 7.f;
+Uint16 giSmpsVolt_SwOv_TimerCal				= 100U;				//100x1ms = 100ms 재기동
+Uint16 giSmpsVolt_SwUv_TimerCal				= 100U;				//100x1ms = 100ms 재기동
+
+//IgVolt snsr diag
+Uint16 giIgVoltSnsr_VoltHiFlt_TimerCal		= 0U;	//즉시 진단
+Uint16 giIgVoltSnsr_VoltLowFlt_TimerCal		= 0U;	//즉시 진단
+Uint16 giIgVoltSnsr_RationalFlt_TimerCal	= 1000U;	//1s 유지시 진단
+float gfIgVoltSnsr_RationalFlt_Cal			= 1.0f;	//1V 편차 발생시 진단
+
+//Ig diag
+float gfIgVolt_ON_Cal						= 7.0f;	//7V IG ON
+float gfIgVolt_OFF_Cal						= 6.5f;	//6.5V IG OFF
+float gfIgVolt_SwOv_Cal						= 22.0f;	//22.0V
+float gfIgVolt_SwOvClr_Cal					= 20.0f; //20.0V
+Uint16 giIgVolt_OFF_TimerCal				= 3000U;	//3000 x 1ms = 3s
+Uint16 giIg_SwOv_Flt_Timer_Cal				= 100U;  //100 x 1ms = 100ms
+
+
+//Temp Snsr diag
+Uint16 giTempSnsr_VoltHiFlt_TimerCal	= 0U;	//즉시
+Uint16 giTempSnsr_VoltLoFlt_TimerCal	= 0U;	//즉시
+
+//Temp diag
+float gfTempHighDrtOnCal					= 90.0f;					//출력 제한 90도
+float gfTempHighOnCal						= 105.0f;				//과온 고장 105도
+float gfTempHighDrtOffCal					= 85.0f;					//출력 제한 해제 85도
+Uint16 giTempHigh_TimerCal					= 10U;					//100 x 1ms = 100ms
+
+//Derating Diag
+float gfVGridDrtStateOnCal                    = 358.0f;
+float gfVGridDrtStateOffCal                   = 358.0f;
+
+//InvoltHighInhibit
+Uint16 giInVoltHighInhibitCntCal			= 100U;			//100 x 1ms = 100ms
+float gfGridVoltHighInhibitHysCal			= 20.0f;			//20.0V
+
+//Gate Diag
+Uint16 giGate_Flt_TimerCal                  = 100U;
+Uint16 giGate_Flt_count_MaxDTCCal           = 10U;
+Uint16 giGate_NotRdy_TimerCal               = 100U;
+Uint16 giGate_HwScp_HealCnt_TimerCal        = 10U;
+
+
+//Rly diag
+float gfVRly_ON_RatioCal					= 0.8f;
+//Uint16 giChMode_RlyOn_TimerCal				= 100U;			// 1x500ms 
+//Uint16 giDisChMode_RlyOn_TimerCal			= 100U;			// 1x500ms 
+Uint16 giChMode_RlyOn_TimerCal			    = 500U;			// 1x500ms
+Uint16 giDisChMode_RlyOn_TimerCal			= 500U;			// 1x500ms
+
+//CurrCtrState
+float gfCurrCtrFltCal[CurrCtrNum]			= { 10.0f,10.0f };			// PFC 10A, DC/DC 5A
+Uint16 giCurrCtrFltTimerCal[CurrCtrNum]		= { 100U, 100U };			//100 x 10ms = 1s
+
+float gfPfcLCurrCtrFltCal					= 10.0f;		// PFC 10A, DC/DC 5A
+Uint16 giPfcLCurrCtrFltTimerCal				= 100U;			//100 x 10ms = 1s
+float gfDcDcOutCurrCtrFltCal				= 100.0f;		// PFC 10A, DC/DC 5A
+Uint16 gIDcDcOutCurrCtrFltTimerCal			= 100U;		//100 x 10ms = 1s
+
+
+
+//PLL diag
+float gfGridPLL_Voltq_KCal					= 0.9f;			// 최대전압의 0.9배
+float gfGridPLL_Voltd_Cal					= 30.0f;		// 30V
+Uint16 giGridPLL_Normal_TimerCal			= 100U;			// 1ms*100 정상판정
+Uint16 giGridPLL_CtrFlt_TimerCal			= 20000U;		// 1ms*1000 이상 판정
+Uint16 giGridPLL_Flt_TimerCal				= 100U;			// 1ms*100 재기동
+Uint8 giGridPLL_Flt_count_MaxDTCCal			= 10U;			// 10회 
+Uint8 giGridPLL_Flt_HealCnt_TimerCal		= 10U;			// 10x100ms = 1초 healing
+
+//VoltCtrState
+float gfDcLinkVoltCtrFltCal					= 20.0f;		// 20V오차 발생 시 진단 수행
+Uint16 giDcLinkVoltCtrFltTimerCal			= 100U;			// 10x100ms = 1초 진단
+float gfOutVoltCtrFltCal					= 20.0f;		// 20V오차 발생 시 진단 수행
+Uint16 giOutVoltCtrFltTimerCal				= 100U;			// 10x100ms = 1초 진단
+float gfV2LVoltCtrFltCal					= 20.0f;		// 20V오차 발생 시 진단 수행
+Uint16 giV2LVoltCtrFltTimerCal				= 100U;			// 10x100ms = 1초 진단
+
+
+
+
+/*============================================================================
+	Private Variables/Constants
+============================================================================*/
+
+/*============================================================================
+	Function Prototypes
+============================================================================*/
+
+/*============================================================================
+	Function Implementations
+============================================================================*/
+

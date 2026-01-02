@@ -1,0 +1,708 @@
+/*============================================================================
+	Includes
+============================================================================*/
+#include "CtrMain.h"
+#include "CtrDcDc.h"
+#include "CtrCal.h"
+#include "CtrApi.h"
+#include "../M0_MAIN/AswMainApi.h"
+#include "../M1_SEQ/SeqApi.h"
+#include "../M2_MON/MonApi.h"
+#include "../M4_FDIAG/FdiagApi.h"
+#include "../M6_COM/ComApi.h"
+#include <math.h>
+
+/*============================================================================
+	Macros
+============================================================================*/
+
+/*============================================================================
+	Enumerations
+============================================================================*/
+
+/*============================================================================
+	Data Structures
+============================================================================*/
+
+/*============================================================================
+	Global variables
+============================================================================*/
+
+//DCDC Output Voltage Control
+PI_con gPiVOut = PI_con_defaults;
+float gfVOutRef = 0.f;
+
+//DCDC Link Voltage Control
+PI_con gPiVV2XDcLink = PI_con_defaults;
+float gfVV2XDcLinkRef = 0.0f;
+
+float gfVV2XDcLinkCmd = 0.0f;
+float gfVV2XDcLinkLpf = 0.0f;
+filter1 gf1VDcDcLinkLpf = filter1_defaults;
+float gfVV2XDcLinkFilter = 0.0f;
+filter2 gf2VDcDcLinkBsf = filter2_defaults;
+Uint16 giVV2XDcDcSoftStart_Timer = 0U;
+
+
+//DCDC Current Control
+PI_con gPiIDcDcOut[CurrDcDcSnsrNum] = { PI_con_defaults, };
+PICPX2P2Z_con gPi2P2ZIDcDcOut[CurrDcDcSnsrNum] = { PICPX2P2Z_con_defaults, };
+float gfIDcDcCmd = 26.0f;
+//float gfIDcDcCmd = 10.0f;
+float gfIDcDcRefMax1Dtable = 0.f;
+float gfIDcDcOutCmdRefMax = 0.f;
+float gfIDcDcOutRefMax = 0.f;
+float gfIDcDcOutRefMaxErr = 0.f;
+float gfIDcDcOutCtrOutMax = 0.f;
+
+float gfIDcDcOutRef = 0.f;
+float gfIDcDcMOutRef = 0.f;
+Uint8 giFlag_IDcDcOutCtrlCpl=0U;
+Uint8 giFlag_IDcDcOutCtrlCpl_Delay = 0U;
+
+/*============================================================================
+	Private Variables/Constants
+============================================================================*/
+
+/*============================================================================
+	Function Prototypes
+============================================================================*/
+void CtrDcDcOutVoltCtr(void);
+void CtrV2XDcLinkVoltCtr(void);
+void CtrDcDcOutCurrCtr(void);
+void CtrV2XDcDcOutCurrCtr(void);
+/*============================================================================
+	Function Implementations
+============================================================================*/
+void CtrDcDcIsrCtr(void)
+{
+	ICCUMODE_STATE iIccuModeState = FdiagApi_GetIccuModeState();
+
+	if ((iIccuModeState == ICCUMODE_V2L)
+		|| (iIccuModeState == ICCUMODE_V2G)
+		)
+	{
+		CtrV2XDcDcOutCurrCtr();		// 전류 제어
+	}
+	else
+	{
+		CtrDcDcOutCurrCtr();		// 전류 제어
+	}
+}
+void CtrDcDcTask100us(void) {}
+void CtrDcDcTask1ms(void)
+{
+	ICCUMODE_STATE iIccuModeState = FdiagApi_GetIccuModeState();
+
+	if ((iIccuModeState == ICCUMODE_V2L)
+		|| (iIccuModeState == ICCUMODE_V2G)
+		)
+	{
+		CtrV2XDcLinkVoltCtr();		//V2X 방전 모드 전압 제어
+	}
+	else
+	{
+		CtrDcDcOutVoltCtr();		//충전 모드 전압 제어
+	}
+}
+void CtrDcDcTask10ms(void) {}
+void CtrDcDcTask100ms(void) {}
+
+
+/*----------------------------------------------------------------------------
+	Func :충전모드 DCDC단 출력 전압 제어기
+	Period : 1ms
+	Parameter :
+----------------------------------------------------------------------------*/
+void CtrDcDcOutVoltCtr(void)
+{
+	float fVOut			= MonApi_GetVolt(VoltSnsrOut);
+	float fVPfcDcLink	= MonApi_GetVolt(VoltSnsrDCLink);
+	float fVGrid_Rms	= MonApi_GetGridVoltRms();
+	float fIDcDcOut[CurrDcDcSnsrNum] = { 0.f, };
+	float fTempMax		= MonApi_GetTempMax();
+	float Ts_VDcDcOut	= Ts1k;
+	float fIDcDcCmdGain = 0.0f;
+	VOLTCTRSTATE iPfcDcLinkVoltCtrState = FdiagApi_GetPfcDcLinkVoltCtrState();
+	VOLTCTRSTATE iDcDcVoltCtrState = FdiagApi_GetOutVoltCtrState();
+
+	fIDcDcOut[CurrSnsrPhase1] = MonApi_GetCurr(CurrSnsrDcDcOut1);
+	fIDcDcOut[CurrSnsrPhase2] = MonApi_GetCurr(CurrSnsrDcDcOut2);
+
+//	iPfcDcLinkVoltCtrState = VOLTCTRSTATE_NORMAL;
+
+	switch (iDcDcVoltCtrState)
+	{
+	case VOLTCTRSTATE_INHIBIT:
+		//PI 제어기 변수 초기화
+		gPiVOut.Kp = gfVDcDcCtrKpCal;
+		gPiVOut.Ki = gfVDcDcCtrKiCal;
+		gPiVOut.Ka = gfVDcDcCtrKaCal;
+		gPiVOut.OutMax = 0.0f;
+		gPiVOut.OutMin = 0.0f;
+		gPiVOut.Integ = 0.0f;
+		gPiVOut.Tsamp = Ts_VDcDcOut;
+		
+		//PI 제어기 변수 초기화
+		gfIDcDcOutRef = 0.0f;
+		gfIDcDcOutRefMax = 0.0f;
+		gfVOutRef = 0.0f;
+
+		if ((SeqApi_GetInteralMainState() == STAT_NORMAL_STATE)
+			&& (iPfcDcLinkVoltCtrState == VOLTCTRSTATE_NORMAL)
+			)
+		{
+			//ICCU 정상 및 PFC 전압 제어 정상 시 DC/DC 전압제어 정상상태 변경
+			FdiagApi_ChangeOutVoltCtrState(VOLTCTRSTATE_NORMAL);
+		}
+		break;
+
+	case VOLTCTRSTATE_READY_SS:
+	case VOLTCTRSTATE_NORMAL:
+		if ((SeqApi_GetInteralMainState() != STAT_NORMAL_STATE)
+			|| (iPfcDcLinkVoltCtrState != VOLTCTRSTATE_NORMAL)
+			)
+		{
+			//ICCU 이상 및 PFC 전압 제어 이상 시 DC/DC 전압제어 정지 상태 변경
+			FdiagApi_ChangeOutVoltCtrState(VOLTCTRSTATE_INHIBIT);
+			break;
+		}
+
+#ifndef DefDisableInVoltDrt
+		// 입력 전압에 따라 출력 전류 지령에 곱할 Gain값 생성 (입력 전압에 따라 출력 전류 DRT)
+		fIDcDcCmdGain = Interp1DCalc(gfxDataVGridRmsCal, gfyDataIDcDcCmdGainCal,\
+			gf1dIDcDcCmdLimitCntCal, gf1dIDcDcCmdLimitCntCal, fVGrid_Rms);
+#else
+		fIDcDcCmdGain = 1;
+#endif
+		// 출력 전압 별 출력 전류 지령 생성
+		gfIDcDcRefMax1Dtable = Interp1DCalc(gfxDataVDcDcOutCal, gfyDataiDcDcRefMaxCal,\
+			gf1diRefMaxGenDataCntCal, gf1diRefMaxGenDataCntCal, fVOut);
+
+		// 입력 전압 및 출력 전압에 의해 생성된 전류 지령과 cmd 지령 중 Min 최대 전류 지령으로 생성
+		gfIDcDcOutCmdRefMax = MIN(gfIDcDcCmd, gfIDcDcRefMax1Dtable * fIDcDcCmdGain) ;
+
+		// 전류 지령 Rate Limit
+		gfIDcDcOutRefMaxErr = gfIDcDcOutCmdRefMax - gfIDcDcOutRefMax;
+
+		if (gfIDcDcOutRefMaxErr > gfIDcDcOutRefMaxRateLimitCal)
+		{
+			gfIDcDcOutRefMax += gfIDcDcOutRefMaxRateLimitCal;
+		}
+		else if (gfIDcDcOutRefMaxErr < -gfIDcDcOutRefMaxRateLimitCal)
+		{
+			gfIDcDcOutRefMax -= gfIDcDcOutRefMaxRateLimitCal;
+		}
+		else
+		{
+			gfIDcDcOutRefMax = gfIDcDcOutCmdRefMax;
+		}
+
+		// 전류 지령 과온 DRT
+		if ((FdiagApi_GetDeratingState() == DERATING_TEMP)
+			|| (FdiagApi_GetDeratingState() == DERATING_GRIDVOLTTEMP)
+			)
+		{
+			gfIDcDcOutRefMax = Interp1DCalc(gfxDataDrtTempCal, gfyDataDrtCurrCal,\
+				gf1dTempDrtCntCal, gf1dTempDrtCntCal, fTempMax) * gfIDcDcOutRefMax;
+		}
+		// 전압 제어 지령 set
+		gfVOutRef = gfVDcDcOutCmdCal;
+
+		// 전압 제어 Kp, Ki, Ka 및 제어기 최대 출력 set
+		gPiVOut.Kp = gfVDcDcCtrKpCal * fVOut;
+		gPiVOut.Ki = gfVDcDcCtrKiCal * fVOut;
+		gPiVOut.Ka = 1.0f / gPiVOut.Kp;
+		gPiVOut.OutMax = gfIDcDcOutRefMax * fVOut;
+
+		// 제어기 reference 및 feedback set
+		gPiVOut.Ref = gfVOutRef;
+		gPiVOut.Fdb = fVOut;
+//		gPiVOut.FF = fVOut * (fIDcDcOut[CurrSnsrPhase1] + fIDcDcOut[CurrSnsrPhase2]);
+
+		// PI 제어
+		PI_Control_calc(&gPiVOut);
+
+		// 제어기 출력을 통한 DC/DC 단 전류 지령 및 DC/DC단 모듈 전류 지령 set
+		//gfIDcDcOutRef = gPiVOut.out / fVOut;
+		gfIDcDcOutRef = gfIDcDcOutRefMax;			//전압 제어기 비활성화
+		gfIDcDcMOutRef = gfIDcDcOutRef * 0.5f;
+
+		break;
+	case VOLTCTRSTATE_FLT:
+		break;
+	default:
+		break;
+
+	}
+
+
+	//DA5 = gfIDcDcOutCmdRefMax;
+	//DA6 = gPiVOut.Ref;
+	//DA7 = gPiVOut.Fdb;
+	//DA8 = gPiVOut.out;
+	//DA9 = gfIDcDcOutRef;
+	//DA10 = iDcDcVoltCtrState;
+}
+
+/*----------------------------------------------------------------------------
+	Func :충전모드 DCDC단 출력 전류 제어기
+	Period : 50us
+	Parameter :
+----------------------------------------------------------------------------*/
+void CtrDcDcOutCurrCtr(void)
+{
+	float fVDcLink = MonApi_GetVolt(VoltSnsrDCLink);
+	float fVoDcDc = MonApi_GetVolt(VoltSnsrOut);
+	float Ts_IIccu = Ts20k;
+	float fIDcDcOutCtrOut[CurrDcDcSnsrNum] = { 0.0f, };
+	float fIDcDcOutCtrOutPeriodus[CurrDcDcSnsrNum] = { 0.0f, };
+	float fIDcDcOutCtrOutDuty[CurrDcDcSnsrNum] = { 0.0f, };
+	float fIDcDcOut[CurrDcDcSnsrNum] = { 0.f, };
+	float fIDcDcOutCtrOutTdeadus = 0.f;
+	float fOutRes = 0.f;
+	float fNormalizedV = 0.f;
+	ICCUMODE_STATE iIccuModeState = 0U;
+	CURRCTRSTATE iDcDcCurrCtrState = 0U;
+	VOLTCTRSTATE iDcDcVoltCtrState = 0U;
+
+	iIccuModeState = FdiagApi_GetIccuModeState();
+	iDcDcCurrCtrState = FdiagApi_GetDcDcCurrCtrState();
+
+	iDcDcVoltCtrState = FdiagApi_GetOutVoltCtrState();
+	fIDcDcOut[CurrSnsrPhase1] = MonApi_GetCurr(CurrSnsrDcDcOut1);
+	fIDcDcOut[CurrSnsrPhase2] = MonApi_GetCurr(CurrSnsrDcDcOut2);
+
+//	iDcDcVoltCtrState = VOLTCTRSTATE_NORMAL; //DC/DC단독테스트용
+
+	switch (iDcDcCurrCtrState)
+	{
+	case CURRCTRSTATE_INHIBIT:
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Kp		= gPi2P2ZIDcDcOut[CurrSnsrPhase2].Kp		= gfIDcDcCtrKpCal;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Ki		= gPi2P2ZIDcDcOut[CurrSnsrPhase2].Ki		= gfIDcDcCtrKiCal;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Ka		= gPi2P2ZIDcDcOut[CurrSnsrPhase2].Ka		= gfIDcDcCtrKaCal;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].OutMax	= gPi2P2ZIDcDcOut[CurrSnsrPhase2].OutMax	= 1.0f;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].OutMin	= gPi2P2ZIDcDcOut[CurrSnsrPhase2].OutMin	= 0.0f;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Integ	= gPi2P2ZIDcDcOut[CurrSnsrPhase2].Integ		= 0.0f;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Tsamp	= gPi2P2ZIDcDcOut[CurrSnsrPhase2].Tsamp		= Ts_IIccu;
+
+		giFlag_IDcDcOutCtrlCpl = FALSE;
+		giFlag_IDcDcOutCtrlCpl_Delay = FALSE;
+		gfIDcDcOutCtrOutMax = 0.0f;
+		API_DC_EMIOS_STOP();
+
+		if (iDcDcVoltCtrState == VOLTCTRSTATE_NORMAL)
+		{
+			FdiagApi_ChageDcDcCurrCtrState(CURRCTRSTATE_NORMAL);
+		}
+
+		break;
+
+	case CURRCTRSTATE_NORMAL:
+
+		if (iDcDcVoltCtrState != VOLTCTRSTATE_NORMAL)
+		{
+			FdiagApi_ChageDcDcCurrCtrState(CURRCTRSTATE_INHIBIT);
+			break;
+		}
+
+		/*
+		//DCDC단 전류 제어기 Soft start
+		gfIDcDcOutCtrOutMax = gfIDcDcOutCtrOutMax + Ts_IIccu * 10.0f;
+		if( gfIDcDcOutCtrOutMax > 1.0f) gfIDcDcOutCtrOutMax =1.0f;
+		*/
+
+		gfIDcDcOutCtrOutMax = 1.0f;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Kp = gPi2P2ZIDcDcOut[CurrSnsrPhase2].Kp = gfIDcDcCtrKpCal;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Ki = gPi2P2ZIDcDcOut[CurrSnsrPhase2].Ki = gfIDcDcCtrKiCal;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Ka = gPi2P2ZIDcDcOut[CurrSnsrPhase2].Ka = gfIDcDcCtrKaCal;
+
+		//LLC 120Hz 리플저감  FeedFoward  
+		fOutRes = fVoDcDc / gfIDcDcMOutRef;
+		fNormalizedV = DefTurnRatio * fVDcLink / fVoDcDc;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].FF = gPi2P2ZIDcDcOut[CurrSnsrPhase2].FF = \
+			Interp2DCalc(gfxDataRoCal, gfyDataNormalVCal, gf2DtableDataCurrCtrOutCal, \
+				gixDataCurrCtrFFNumCal, giyDataCurrCtrFFNumCal, fOutRes, fNormalizedV);
+
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Ref = gfIDcDcMOutRef;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Fdb = fIDcDcOut[CurrSnsrPhase1];
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].OutMax = gfIDcDcOutCtrOutMax;
+
+		PICPX2P2Z_Control_calc(&gPi2P2ZIDcDcOut[CurrSnsrPhase1],
+			PI2 * 120.f, 0.01f, PI2 * 60.f, 1.0f);
+
+		fIDcDcOutCtrOut[CurrSnsrPhase1] = gPi2P2ZIDcDcOut[CurrSnsrPhase1].out 
+			* gfIDcDcOutCtrTbCntCal + gfIDcDcOutCtrTbCntFFCal;
+
+		fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1] = fIDcDcOutCtrOut[CurrSnsrPhase1] * INVCPUCLKTOUS;
+
+		if (fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1] > 6.0f + 0.5f)
+		{
+			fIDcDcOutCtrOutTdeadus = fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1] - 6.0f;
+		}
+		else if (fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1] < 3.33f - 0.5f)
+		{
+			fIDcDcOutCtrOutTdeadus = 3.33f - fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1];
+		}
+		else
+		{
+			fIDcDcOutCtrOutTdeadus = 1.0f;
+		}
+
+		if (fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1] <= 3.33f)
+		{
+			fIDcDcOutCtrOutDuty[CurrSnsrPhase1] = fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1] / 3.33f;
+			fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1] = 3.33f;
+		}
+		else
+		{
+			fIDcDcOutCtrOutDuty[CurrSnsrPhase1] = 1.0;
+		}
+
+		gPi2P2ZIDcDcOut[CurrSnsrPhase2].Ref = gfIDcDcMOutRef;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase2].Fdb = fIDcDcOut[CurrSnsrPhase2];
+		gPi2P2ZIDcDcOut[CurrSnsrPhase2].OutMax = gfIDcDcOutCtrOutMax;
+
+		PICPX2P2Z_Control_calc(&gPi2P2ZIDcDcOut[CurrSnsrPhase2], PI2 * 120.f, 0.01f, PI2 * 60.f, 1.0f);
+
+		fIDcDcOutCtrOut[CurrSnsrPhase2] = gPi2P2ZIDcDcOut[CurrSnsrPhase2].out * gfIDcDcOutCtrTbCntCal + gfIDcDcOutCtrTbCntFFCal;
+		fIDcDcOutCtrOutPeriodus[CurrSnsrPhase2] = fIDcDcOutCtrOut[CurrSnsrPhase2] * INVCPUCLKTOUS;
+
+		if (fIDcDcOutCtrOutPeriodus[CurrSnsrPhase2] <= 3.33f)
+		{
+			fIDcDcOutCtrOutDuty[CurrSnsrPhase2] = fIDcDcOutCtrOutPeriodus[CurrSnsrPhase2] / 3.33f;
+			fIDcDcOutCtrOutPeriodus[CurrSnsrPhase2] = 3.33f;
+		}
+		else
+		{
+			fIDcDcOutCtrOutDuty[CurrSnsrPhase2] = 1.0f;
+		}
+
+		API_DC_EMIOSA_TS(fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1], 0.1, fIDcDcOutCtrOutDuty[CurrSnsrPhase1]);
+		API_DC_EMIOSB_TS(fIDcDcOutCtrOutPeriodus[CurrSnsrPhase2], 0.1, fIDcDcOutCtrOutDuty[CurrSnsrPhase2]);
+		API_DC_EMIOSC_TS(fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1], fIDcDcOutCtrOutTdeadus, 0.5);
+
+		giFlag_IDcDcOutCtrlCpl_Delay = giFlag_IDcDcOutCtrlCpl;
+
+		giFlag_IDcDcOutCtrlCpl = TRUE;
+		if (giFlag_IDcDcOutCtrlCpl_Delay == TRUE) {
+			API_DCPRI1_EMIOS_RUN();
+			API_DCPRI2_EMIOS_RUN();
+		}
+
+		if ((giFlag_IDcDcOutCtrlCpl_Delay == TRUE)
+			&& (fIDcDcOut[CurrSnsrPhase1] > gfDcDcSrPwmOnCurrCal)
+			&& (fIDcDcOutCtrOutPeriodus[CurrSnsrPhase2] > 3.33f)
+			)
+		{
+			//API_DCSEC_EMIOS_RUN();
+			API_DCSEC_EMIOS_STOP();
+		}
+		else if ((fIDcDcOut[CurrSnsrPhase1] < gfDcDcSrPwmOffCurrCal)
+			|| (fIDcDcOutCtrOutPeriodus[CurrSnsrPhase2] <= 3.33f)
+			)
+		{
+			API_DCSEC_EMIOS_STOP();
+		}
+
+		break;
+	case CURRCTRSTATE_FLT:
+		break;
+	default:
+		break;
+	}
+
+	//DA5 = gPiIDcDcOut[CurrSnsrPhase1].Ref;
+	//DA6 = gPiIDcDcOut[CurrSnsrPhase1].Fdb;
+	//DA7 = gPiIDcDcOut[CurrSnsrPhase1].out;
+	//DA8 = gPiIDcDcOut[CurrSnsrPhase1].FF;
+	//DA9 = fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1];
+	//DA10 = iDcDcCurrCtrState;
+
+}
+/*----------------------------------------------------------------------------
+	Func : V2X DCDC단 Link 전압 제어기
+	Period : 1ms
+	Parameter :
+----------------------------------------------------------------------------*/
+void CtrV2XDcLinkVoltCtr()
+{
+	float fVDcDcLink = MonApi_GetVolt(VoltSnsrDCLink);
+	float fVGrid = MonApi_GetVolt(VoltSnsrGrid);
+	float fVOut = MonApi_GetVolt(VoltSnsrOut);
+	float Ts_VV2XDcLink = Ts1k;
+	float fVV2XDcLinkRefErr = 0.0f;
+	float fVV2XDcLinkRef = gfVV2XDcLinkRef;
+	VOLTCTRSTATE iV2XDcLinkVoltCtrState = FdiagApi_GetDcDcLinkVoltCtrState();
+	ICCUMODE_STATE iIccuModeState = FdiagApi_GetIccuModeState();
+	float  ffgridV2X = 60.0;
+
+	if (iIccuModeState == ICCUMODE_V2G)
+	{
+		ffgridV2X = CtrApi_Getfgrid();
+	}
+	else if (iIccuModeState == ICCUMODE_V2L)
+	{
+		ffgridV2X = CtrApi_GetfV2L();
+	}
+
+	gfVV2XDcLinkCmd = (fVOut + gfVV2XDcLinkCmdOffsetCal) * gfVV2XDcLinkCmdKCal;
+	gfVV2XDcLinkCmd = LIMIT_MIN(gfVV2XDcLinkCmd, gfVV2XDcLinkRefMinCal);
+
+	gfVV2XDcLinkLpf = LPF1(Ts1k, gffV2XDcLinkVoltLpfCal, fVDcDcLink, &gf1VDcDcLinkLpf);
+   	gfVV2XDcLinkFilter = BSF2(Ts1k, ffgridV2X*2.0f, gfDrV2XDcLinkVoltBsfCal, gfVV2XDcLinkLpf, &gf2VDcDcLinkBsf);
+
+#ifdef DefAdaptiveGainControl
+	gPiVV2XDcLink.Kp = gfV2XDcLinkVoltPIKpCal * gfVV2XDcLinkFilter;
+	gPiVV2XDcLink.Kp = LIMIT_MIN(gPiVV2XDcLink.Kp, gfV2XDcLinkVoltPIKpMinCal);
+	gPiVV2XDcLink.Ki = gfV2XDcLinkVoltPIKiCal * gfVV2XDcLinkFilter;
+	gPiVV2XDcLink.Ki = LIMIT_MIN(gPiVV2XDcLink.Ki, gfV2XDcLinkVoltPIKiMinCal);
+	gPiVV2XDcLink.Ka = 1.0f / gPiVV2XDcLink.Kp;
+#else
+	gPiVV2XDcLink.Kp = gfV2XDcLinkVoltPIKpCal * 650.0f;
+	gPiVV2XDcLink.Ki = gfOutVoltPIKiCal * 650.0f;
+	gPiVV2XDcLink.Ka = 1.0f / gfOutVoltPI.Kp;
+#endif
+
+	switch (iV2XDcLinkVoltCtrState)
+	{
+	case VOLTCTRSTATE_INHIBIT:
+		gPiVV2XDcLink.OutMax	= gfV2XDcLinkVoltPIOutMax;
+		gPiVV2XDcLink.OutMin	= gfV2XDcLinkVoltPIOutMin;
+		gPiVV2XDcLink.Integ		= 0.0f;
+		gPiVV2XDcLink.Tsamp		= Ts_VV2XDcLink;
+		gfVV2XDcLinkRef			= gfVV2XDcLinkFilter;
+		if ((SeqApi_GetInteralMainState() == STAT_NORMAL_STATE)
+			)
+		{
+			FdiagApi_ChangeDcDcLinkVoltCtrState(VOLTCTRSTATE_READY_SS);
+		}
+		break;
+	case VOLTCTRSTATE_READY_SS:
+		if ((fVDcDcLink > gfVV2XDcLinkCmdMinCal)
+			&& (fVDcDcLink > gfVV2XDcLinkSSGainCal * gfVV2XDcLinkCmd)
+			)
+		{
+			TIMER_TICK(giVV2XDcDcSoftStart_Timer);
+			if (giVV2XDcDcSoftStart_Timer > giVV2XDcDcSoftStart_TimerCal)
+			{
+				TIMER_RESET(giVV2XDcDcSoftStart_Timer);
+				FdiagApi_ChangeDcDcLinkVoltCtrState(VOLTCTRSTATE_NORMAL);
+			}
+		}
+		else
+		{
+			TIMER_RESET(giVV2XDcDcSoftStart_Timer);
+		}
+	case VOLTCTRSTATE_NORMAL:
+		if ((SeqApi_GetInteralMainState() != STAT_NORMAL_STATE)
+			)
+		{
+			FdiagApi_ChangeDcDcLinkVoltCtrState(VOLTCTRSTATE_INHIBIT);
+			break;
+		}
+
+		//전압지령 Rate Limit
+		fVV2XDcLinkRefErr = gfVV2XDcLinkCmd - fVV2XDcLinkRef;
+		if (fVV2XDcLinkRefErr > gfVV2XDcLinkCmdRateLimitCal)
+		{
+			fVV2XDcLinkRef += gfVV2XDcLinkCmdRateLimitCal;
+		}
+		else if (fVV2XDcLinkRefErr < -gfVV2XDcLinkCmdRateLimitCal)
+		{
+			fVV2XDcLinkRef -= gfVV2XDcLinkCmdRateLimitCal;
+		}
+		else
+		{
+			fVV2XDcLinkRef = gfVV2XDcLinkCmd;
+		}
+
+		gfVV2XDcLinkRef = LIMIT_MAX(fVV2XDcLinkRef, gfVV2XDcLinkRefMaxCal);
+		gfVV2XDcLinkRef = LIMIT_MIN(fVV2XDcLinkRef, 0);
+
+		gPiVV2XDcLink.Ref = gfVV2XDcLinkRef;
+ 		gPiVV2XDcLink.Fdb = gfVV2XDcLinkFilter;
+ 		
+		//DC/DC 출력 파워 PFC단 전압제어기 출력단 전향 보상
+//		gPiVV2XDcLink.FF = fIDcDcOutRef * fVOut;
+
+		PI_Control_calc(&gPiVV2XDcLink);
+
+		gfIDcDcMOutRef = gPiVV2XDcLink.out / LIMIT_MIN(fVOut, 10.0f);
+
+		break;
+	case VOLTCTRSTATE_FLT:
+		break;
+	default:
+		break;
+	}
+
+//	DA5 = gfVV2XDcLinkCmd;
+//	DA6 = gPiVV2XDcLink.Ref;
+//	DA7 = gPiVV2XDcLink.Fdb;
+//	DA8 = gPiVV2XDcLink.out;
+//	DA9 = iV2XDcLinkVoltCtrState;
+
+}
+
+
+
+/*----------------------------------------------------------------------------
+	Func :방전모드 DCDC단 출력 전류 제어기
+	Period : 50us
+	Parameter :
+----------------------------------------------------------------------------*/
+void CtrV2XDcDcOutCurrCtr(void)
+{
+	float fVDcLink = MonApi_GetVolt(VoltSnsrDCLink);
+	float fVoDcDc = MonApi_GetVolt(VoltSnsrOut);
+	float Ts_IIccu = Ts20k;
+	float fIDcDcOutCtrOut[CurrDcDcSnsrNum] = { 0.0f, };
+	float fIDcDcOutCtrOutPeriodus[CurrDcDcSnsrNum] = { 0.0f, };
+	float fIDcDcOutCtrOutDuty[CurrDcDcSnsrNum] = { 0.0f, };
+	float fIDcDcOut[CurrDcDcSnsrNum] = { 0.f, };
+	float fIDcDcOutCtrOutTdeadus = 0.f;
+	float fOutRes = 0.f;
+	float fNormalizedV = 0.f;
+	ICCUMODE_STATE iIccuModeState = 0U;
+	CURRCTRSTATE iDcDcCurrCtrState = 0U;
+	VOLTCTRSTATE iDcDcVoltCtrState = 0U;
+
+	iIccuModeState = FdiagApi_GetIccuModeState();
+	iDcDcCurrCtrState = FdiagApi_GetDcDcCurrCtrState();
+
+	iDcDcVoltCtrState = FdiagApi_GetDcDcLinkVoltCtrState();
+	fIDcDcOut[CurrSnsrPhase1] = MonApi_GetCurr(CurrSnsrDcDcOut1);
+	fIDcDcOut[CurrSnsrPhase2] = 0;
+	
+	//iDcDcCurrCtrState = CURRCTRSTATE_NORMAL;	//DC/DC단독 테스트용
+
+	switch (iDcDcCurrCtrState)
+	{
+	case CURRCTRSTATE_INHIBIT:
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Kp		= gPi2P2ZIDcDcOut[CurrSnsrPhase2].Kp		= gfIDcDcCtrKpCal;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Ki		= gPi2P2ZIDcDcOut[CurrSnsrPhase2].Ki		= gfIDcDcCtrKiCal;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Ka		= gPi2P2ZIDcDcOut[CurrSnsrPhase2].Ka		= gfIDcDcCtrKaCal;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].OutMax	= gPi2P2ZIDcDcOut[CurrSnsrPhase2].OutMax	= 1.0f;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].OutMin	= gPi2P2ZIDcDcOut[CurrSnsrPhase2].OutMin	= 0.0f;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Integ	= gPi2P2ZIDcDcOut[CurrSnsrPhase2].Integ		= 0.0f;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Tsamp	= gPi2P2ZIDcDcOut[CurrSnsrPhase2].Tsamp		= Ts_IIccu;
+
+		giFlag_IDcDcOutCtrlCpl = FALSE;
+		giFlag_IDcDcOutCtrlCpl_Delay = FALSE;
+		gfIDcDcOutCtrOutMax = 0.0f;
+		API_DC_EMIOS_STOP();
+
+		if ((iDcDcVoltCtrState == VOLTCTRSTATE_NORMAL)
+			|| (iDcDcVoltCtrState == VOLTCTRSTATE_READY_SS)
+			)
+		{
+			FdiagApi_ChageDcDcCurrCtrState(CURRCTRSTATE_NORMAL);
+		}
+
+		break;
+
+	case CURRCTRSTATE_NORMAL:
+		
+		if ((iDcDcVoltCtrState != VOLTCTRSTATE_NORMAL)
+			&& (iDcDcVoltCtrState != VOLTCTRSTATE_READY_SS)
+			)
+		{
+			FdiagApi_ChageDcDcCurrCtrState(CURRCTRSTATE_INHIBIT);
+			break;
+		}
+		/*
+		//DCDC단 전류 제어기 Soft start
+		gfIDcDcOutCtrOutMax = gfIDcDcOutCtrOutMax + Ts_IIccu * 10.0f;
+		if( gfIDcDcOutCtrOutMax > 1.0f) gfIDcDcOutCtrOutMax =1.0f;
+		*/
+
+		gfIDcDcOutCtrOutMax = 1.0f;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Kp = gPi2P2ZIDcDcOut[CurrSnsrPhase2].Kp = gfIDcDcCtrKpCal;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Ki = gPi2P2ZIDcDcOut[CurrSnsrPhase2].Ki = gfIDcDcCtrKiCal;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Ka = gPi2P2ZIDcDcOut[CurrSnsrPhase2].Ka = gfIDcDcCtrKaCal;
+
+		//LLC 120Hz 리플저감  FeedFoward  
+		fOutRes = fVoDcDc / (gfIDcDcMOutRef * DefTurnRatio * DefTurnRatio);
+		fNormalizedV = fVoDcDc / (DefTurnRatio * fVDcLink);
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].FF = \
+			Interp2DCalc(gfxDataRoCal, gfyDataNormalVCal, gf2DtableDataCurrCtrOutCal,
+				gixDataCurrCtrFFNumCal, giyDataCurrCtrFFNumCal, fOutRes, fNormalizedV);
+
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Ref = gfIDcDcMOutRef;
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].Fdb = -1.0f * fIDcDcOut[CurrSnsrPhase1];
+		gPi2P2ZIDcDcOut[CurrSnsrPhase1].OutMax = gfIDcDcOutCtrOutMax;
+
+		PICPX2P2Z_Control_calc(&gPi2P2ZIDcDcOut[CurrSnsrPhase1],
+			PI2 * 120.f, 0.05f, PI2 * 60.f, 1.0f);
+
+		fIDcDcOutCtrOut[CurrSnsrPhase1] = gPi2P2ZIDcDcOut[CurrSnsrPhase1].out * gfIDcDcOutCtrTbCntCal + gfIDcDcOutCtrTbCntFFCal;
+		fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1] = fIDcDcOutCtrOut[CurrSnsrPhase1] * INVCPUCLKTOUS;
+
+		if (fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1] > 6.0f + 0.5f)
+		{
+			fIDcDcOutCtrOutTdeadus = fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1] - 6.0f;
+		}
+		else if (fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1] < 3.33f - 0.5f)
+		{
+			fIDcDcOutCtrOutTdeadus = 3.33f - fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1];
+		}
+		else
+		{
+			fIDcDcOutCtrOutTdeadus = 1.0f;
+		}
+
+		if (fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1] <= 3.33f)
+		{
+			fIDcDcOutCtrOutDuty[CurrSnsrPhase1] = fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1] / 3.33f;
+			fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1] = 3.33f;
+		}
+		else
+		{
+			fIDcDcOutCtrOutDuty[CurrSnsrPhase1] = 1.0;
+		}
+
+		API_DC_EMIOSC_TS(fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1], 0.1, fIDcDcOutCtrOutDuty[CurrSnsrPhase1]);
+		API_DC_EMIOSA_TS(fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1], fIDcDcOutCtrOutTdeadus, 0.5);
+
+		giFlag_IDcDcOutCtrlCpl_Delay = giFlag_IDcDcOutCtrlCpl;
+
+		giFlag_IDcDcOutCtrlCpl = TRUE;
+		if (giFlag_IDcDcOutCtrlCpl_Delay == TRUE) {
+			API_DCSEC_EMIOS_RUN();
+		}
+
+		if ((giFlag_IDcDcOutCtrlCpl_Delay == TRUE)
+			&& (fIDcDcOut[CurrSnsrPhase1] > gfDcDcSrPwmOnCurrCal)
+			&& (fIDcDcOutCtrOutPeriodus[CurrSnsrPhase2] > 3.33f)
+			)
+		{
+			API_DCPRI1_EMIOS_STOP();
+			//				API_DCPRI1_EMIOS_RUN();
+		}
+		else if ((fIDcDcOut[CurrSnsrPhase1] < gfDcDcSrPwmOffCurrCal)
+			|| (fIDcDcOutCtrOutPeriodus[CurrSnsrPhase2] <= 3.33f)
+			)
+		{
+			API_DCPRI1_EMIOS_STOP();
+		}
+
+		API_DCPRI2_EMIOS_STOP();
+			
+
+		break;
+	case CURRCTRSTATE_FLT:
+		break;
+	default:
+		break;
+	}
+
+
+	//	DA5 = gPiIDcDcOut[CurrSnsrPhase1].Ref;
+	//	DA6 = gPiIDcDcOut[CurrSnsrPhase1].Fdb;
+	//	DA7 = gPiIDcDcOut[CurrSnsrPhase1].out;
+	//	DA8 = fIDcDcOutCtrOutPeriodus[CurrSnsrPhase1];
+	//	DA9 = fIDcDcOutCtrOutPeriodus[CurrSnsrPhase2];
+	//	DA10 = iDcDcCurrCtrState;
+
+}

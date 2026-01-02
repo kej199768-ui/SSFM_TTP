@@ -1,0 +1,1270 @@
+/*============================================================================
+	Includes
+============================================================================*/
+#include "FdiagChkS.h"
+#include "FdiagChkIO.h"
+#include "FdiagChkM.h"
+#include "FdiagCal.h"
+#include "FdiagApi.h"
+#include "../M0_MAIN/AswMainApi.h"
+#include "../M1_SEQ/SeqApi.h"
+#include "../M2_MON/MonApi.h"
+#include "../M3_CTR/CtrApi.h"
+
+/*============================================================================
+	Macros
+============================================================================*/
+
+/*============================================================================
+	Enumerations
+============================================================================*/
+
+/*============================================================================
+	Data Structures
+============================================================================*/
+
+/*============================================================================
+	Global variables
+============================================================================*/
+ECU_STATE			giEcuRunState			= ECU_NORMAL;
+MALFUNC_STATE		giMalfuncState			= MALFUNC_NORMAL;
+PWM_STATE			giPwmoutState			= PWM_NORMAL;
+OPERATING_STATE		giOperModeState			= OPERATING_NON;
+DERATING_STATE		giDeratingState			= DERATING_NORMAL;
+
+//AuxBat voltage sensor diag
+AUXBATVOLTSNSR_STATE giAuxBatVoltSnsrState	= AUXBATVOLTSNSR_READY;
+Uint16 giAuxBatVoltSnsr_VoltHiFlt_Timer		= 0U;
+Uint16 giAuxBatVoltSnsr_VoltLoFlt_Timer		= 0U;
+Uint16 giAuxBatVoltSnsr_RationalFlt_Timer	= 0U;
+
+//AuxBat voltage diag
+AUXBATVOLT_STATE giAuxBatVoltState			= AUXBATVOLT_NORMAL;
+Uint16 giAuxBatVolt_SwOv_Timer				= 0U;
+Uint16 giAuxBatVolt_SwUv_Timer				= 0U;
+
+//Smps voltage sensor diag
+SMPSVOLTSNSR_STATE giSmpsVoltSnsrState = SMPSVOLTSNSR_READY;
+Uint16 giSmpsVoltSnsr_VoltHiFlt_Timer = 0U;
+Uint16 giSmpsVoltSnsr_VoltLoFlt_Timer = 0U;
+Uint16 giSmpsVoltSnsr_RationalFlt_Timer = 0U;
+
+//Smps voltage diag
+SMPSVOLT_STATE giSmpsVoltState = SMPSVOLT_NORMAL;
+Uint16 giSmpsVolt_SwOv_Timer = 0U;
+Uint16 giSmpsVolt_SwUv_Timer = 0U;
+
+//IG voltage sensor diag
+IGVOLTSNSR_STATE giIgVoltSnsrState = IGVOLTSNSR_READY;
+Uint16 giIgVoltSnsr_VoltHiFlt_Timer = 0U;
+Uint16 giIgVoltSnsr_VoltLowFlt_Timer = 0U;
+Uint16 giIgVoltSnsr_RationalFlt_Timer = 0U;
+
+//IG diag
+IGVOLT_STATE giIgVoltState = IG_OFF;
+Uint16 giIgVolt_OFF_Timer = 0U;
+Uint16 giIg_SwOv_Flt_Timer = 0U;
+
+//Temp snsr daig
+TEMPSNSR_STATE giTempSnsrState[TempSnsrNum]		= { TEMPSNSR_READY, };
+Uint16 giTempSnsr_VoltLoFlt_Timer[TempSnsrNum]	= { 0U, };
+Uint16 giTempSnsr_VoltHiFlt_Timer[TempSnsrNum]	= { 0U, };
+Uint16 giTempSnsrFltFlag = 0U;
+
+//Temp diag
+TEMP_STATE giTempState[TempSnsrNum]			= { TEMP_NORMAL, };
+Uint16 giTempHigh_Timer[TempSnsrNum]		= { 0U, };
+Uint16 giTempFltFlag = 0U;
+
+//Gate diag
+GATE_STATE giGateState[GateSnsrNum]         = { GATE_NORMAL, GATE_NORMAL};
+Uint16 giGatePwmEnFlag[GateSnsrNum]			= { 0U, };
+Uint16 giGate_Flt_Timer[GateSnsrNum]        = { 0U, };
+Uint16 giGate_Flt_count[GateSnsrNum]        = { 0U, };
+Uint16 giGate_Flt_HealCycle[GateSnsrNum]    = { 0U, };
+Uint16 giGate_Flt_HealState[GateSnsrNum]    = { 0U, };
+Uint16 giGate_NotRdy_Timer[GateSnsrNum]     = { 0U, };
+
+//InvoltHighInhibit
+Uint16 giInVoltHighInhibitState	= 0U;
+Uint16 giInVoltHighInhibitCnt	= 0U;
+
+//RlyState
+RLY_STATE giRlyState = RLY_OFF;
+Uint16 giChMode_RlyOn_Timer = 0U;
+Uint16 giDisChMode_RlyOn_Timer = 0U;
+
+
+
+
+/*============================================================================
+	Private Variables/Constants
+============================================================================*/
+
+/*============================================================================
+	Function Prototypes
+============================================================================*/
+//void FdiagChkS_RunAuxBatVoltSnsrState(void);
+//void FdiagChkS_ChangeAuxBatVoltSnsrState(AUXBATVOLTSNSR_STATE state);
+//void FdiagChkS_RunAuxBatVoltState(void);
+//void FdiagChkS_ChangeAuxBatVoltState(AUXBATVOLT_STATE state);
+//
+//void FdiagChkS_RunSmpsVoltSnsrState(void);
+//void FdiagChkS_ChangeSmpsVoltSnsrState(SMPSVOLTSNSR_STATE state);
+//void FdiagChkS_RunSmpsVoltState(void);
+//void FdiagChkS_ChangeSmpsVoltState(SMPSVOLT_STATE state);
+//
+//void FdiagChkS_RunIgVoltSnsrState(void);
+//void FdiagChkS_ChangeIgVoltSnsrState(IGVOLTSNSR_STATE state);
+//void FdiagChkS_RunIgVoltState(void);
+//void FdiagChkS_ChangeIgVoltState(IGVOLT_STATE state);
+//
+//void FdiagChkS_RunTempSnsrState(Uint16 SnsrNum);
+//void FdiagChkS_ChangeTempSnsrState(Uint16 SnsrNum, TEMPSNSR_STATE state);
+//void FdiagChkS_RunTempState(Uint16 SnsrNum);
+//void FdiagChkS_ChangeTempState(Uint16 SnsrNum, TEMP_STATE state);
+//
+//void FdiagChkS_RunDrtState(void);
+//void FdiagChkS_ChangeDrtState(DERATING_STATE state);;
+//
+//void FdiagChkS_RunGateSwFlt(Uint16 SnsrNum);
+//void FdiagChkS_RunGateState(Uint16 SnsrNum);
+//void FdiagChkS_ChangeGateState(Uint16 SnsrNum, GATE_STATE state);
+//void FdiagChkS_GateHwFltHealCount(Uint16 SnsrNum);
+
+void FdiagChkS_RunRlyState(void);
+void FdiagChkS_ChangeRlyState(Uint16 state);
+RLY_STATE FdiagChkS_GetRlyState(void);
+
+void FdiagChkS_IGState(void);
+void FdiagChkS_ChangeIGState(Uint16 state);
+
+void FdiagChkS_SetPwmEnState(Uint16 SnsrNum, Uint8 state);
+
+/*============================================================================
+	Function Implementations
+============================================================================*/
+void FdiagChkSIsrCtr()
+{
+
+}
+
+void FdiagChkSTask100us()
+{
+
+}
+
+void FdiagChkSTask1ms()
+{
+	FdiagChkS_RunRlyState();
+	FdiagChkS_IGState();
+}
+
+void FdiagChkSTask10ms()
+{
+
+}
+
+void FdiagChkSTask100ms()
+{
+
+}
+
+/*----------------------------------------------------------------------------
+    Func : RLY 상태 진단
+    Period : 1ms
+    Parameter : giRlyState
+----------------------------------------------------------------------------*/
+void FdiagChkS_RunRlyState(void)
+{
+    float fVGridRms = MonApi_GetGridVoltRms();
+    float fVPfcDcLink = MonApi_GetVolt(VoltSnsrDCLink);
+    float fVOut = MonApi_GetVolt(VoltSnsrOut);
+    float fVGrid_Mag = CtrApi_GetVgridMag();
+
+    ICCUMODE_STATE iIccuModeState = FdiagApi_GetIccuModeState();
+
+    switch (giRlyState)
+    {
+    case RLY_OFF:
+        if ((SeqApi_GetInternalMainState() == STAT_NORMAL_STATE)
+            && (fVPfcDcLink > (gfVRly_ON_RatioCal * fVGrid_Mag))
+            && (iIccuModeState == ICCUMODE_CHARGING)
+            )
+        {
+            TIMER_RESET(giDisChMode_RlyOn_Timer);
+            TIMER_TICK(giChMode_RlyOn_Timer);
+            if (giChMode_RlyOn_Timer > giChMode_RlyOn_TimerCal)
+            {
+                TIMER_RESET(giChMode_RlyOn_Timer);
+                ItrCom_EnablePfcRly();
+                FdiagChkS_ChangeRlyState(RLY_ON);
+            }
+        }
+        else
+        {
+            TIMER_RESET(giChMode_RlyOn_Timer);
+            TIMER_RESET(giDisChMode_RlyOn_Timer);
+        }
+        break;
+    case RLY_ON:
+        if (SeqApi_GetInternalMainState() != STAT_NORMAL_STATE)
+        {
+            ItrCom_DisablePfcRly();
+            FdiagChkS_ChangeRlyState(RLY_OFF);
+        }
+        break;
+    case RLY_OPEN:
+    case RLY_MELTING:
+        break;
+    default:
+        break;
+    }
+}
+
+void FdiagChkS_ChangeRlyState(Uint16 state)
+{
+    giRlyState = state;
+}
+
+void FdiagChkS_IGState(void)
+{
+    Uint16 iIG_Inhibit = ItrCom_GetTestInhibit();
+
+    if (iIG_Inhibit == 1) { FdiagChkS_ChangeIGState(ON); }
+    else                  { FdiagChkS_ChangeIGState(OFF); }
+}
+
+void FdiagChkS_ChangeIGState(Uint16 state)
+{
+    giIgVoltState = state;
+}
+
+///*----------------------------------------------------------------------------
+//	Func : 제어보드 전압 센서 SW 고장 진단
+//	Period : 1ms
+//	Parameter : giAuxBatVoltState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_RunAuxBatVoltSnsrState(void)
+//{
+//	float fVAuxBat = MonApi_GetAuxBatVolt();
+//	float fVAuxBatHwLpf = MonApi_GetAuxBatVoltHwLpf();
+//	float fVAuxBatFcuCan = 0.0f;
+//	//	float fVAuxBatFcuCan = MonCan_GetBatVoltFcu();
+//	float fAdcResult = MonApi_GetAuxBatVoltAdcResult();			//AuxBat ADC
+//
+//	switch (giAuxBatVoltState)
+//	{
+//	case AUXBATVOLTSNSR_READY:
+//	case AUXBATVOLTSNSR_NORMAL:
+//		if (fAdcResult >= gfAdcSnsrVoltHiFltCal)			//ADC 입력전압 4.5V이상 10ms 유지 시
+//		{
+//			TIMER_RESET(giAuxBatVoltSnsr_VoltLoFlt_Timer);
+//			TIMER_RESET(giAuxBatVoltSnsr_RationalFlt_Timer);
+//			TIMER_TICK(giAuxBatVoltSnsr_VoltHiFlt_Timer);
+//			if (giAuxBatVoltSnsr_VoltHiFlt_Timer >= giAuxBatVoltSnsr_VoltHiFlt_TimerCal)
+//			{
+//				FdiagChkS_ChangeAuxBatVoltSnsrState(AUXBATVOLTSNSR_VOLTHI_FLT);
+//				TIMER_RESET(giAuxBatVoltSnsr_VoltHiFlt_Timer);
+//			}
+//		}
+//		else if (fAdcResult <= gfAdcSnsrVoltLoFltCal)	//ADC 입력전압 0.5V 이하 10ms 유지 시
+//		{
+//			TIMER_RESET(giAuxBatVoltSnsr_VoltHiFlt_Timer);
+//			TIMER_RESET(giAuxBatVoltSnsr_RationalFlt_Timer);
+//			TIMER_TICK(giAuxBatVoltSnsr_VoltHiFlt_Timer);
+//			if (giAuxBatVoltSnsr_VoltLoFlt_Timer >= giAuxBatVoltSnsr_VoltLoFlt_TimerCal)
+//			{
+//				FdiagChkS_ChangeAuxBatVoltSnsrState(AUXBATVOLTSNSR_VOLTLO_FLT);
+//				TIMER_RESET(giAuxBatVoltSnsr_VoltLoFlt_Timer);
+//			}
+//		}
+//#ifndef DefDisableCom
+//		else if ((FdiagChkFS_GetCanHsState() == CANHS_NORMAL)
+//			&& (FdiagChkFS_GetCanFdState() == CANFD_NORMAL)
+//			&& (fabs(fVAuxBatFcuCan - fVAuxBat) >= gfAuxBatVoltSnsr_RationalFlt_Cal) //Can값 센싱값 비교 오차 크게 발생시
+//			)
+//		{
+//			TIMER_RESET(giAuxBatVoltSnsr_VoltHiFlt_Timer);
+//			TIMER_RESET(giAuxBatVoltSnsr_VoltLoFlt_Timer);
+//			TIMER_TICK(giAuxBatVoltSnsr_RationalFlt_Timer);
+//			if (giAuxBatVoltSnsr_RationalFlt_Timer >= giAuxBatVoltSnsr_RationalFlt_TimerCal)
+//			{
+//				FdiagChkS_ChangeAuxBatVoltSnsrState(AUXBATVOLTSNSR_RATIONAL_FLT);
+//				TIMER_RESET(giAuxBatVoltSnsr_RationalFlt_Timer);
+//			}
+//		}
+//#endif
+//		else
+//		{
+//			TIMER_RESET(giAuxBatVoltSnsr_VoltHiFlt_Timer);
+//			TIMER_RESET(giAuxBatVoltSnsr_VoltLoFlt_Timer);
+//			TIMER_RESET(giAuxBatVoltSnsr_RationalFlt_Timer);
+//			FdiagChkS_ChangeAuxBatVoltSnsrState(AUXBATVOLTSNSR_NORMAL);
+//		}
+//		break;
+//
+//	case AUXBATVOLTSNSR_VOLTLO_FLT:
+//		break;
+//	case AUXBATVOLTSNSR_VOLTHI_FLT:
+//		break;
+//	case AUXBATVOLTSNSR_RATIONAL_FLT:
+//		break;
+//	default:
+//		break;
+//	}
+//}
+//
+///*----------------------------------------------------------------------------
+//	Func : 제어보드 전압 센서 상태 변경
+//	Period : Non
+//	Parameter : giAuxBatVoltState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_ChangeAuxBatVoltSnsrState(AUXBATVOLTSNSR_STATE state)
+//{
+//	giAuxBatVoltSnsrState = state;
+//}
+//
+///*----------------------------------------------------------------------------
+//	Func : 보조전원 상태 진단
+//	Period : 1ms
+//	Parameter : giAuxBatVoltState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_RunAuxBatVoltState(void)
+//{
+//	float fVAuxBat = MonApi_GetAuxBatVolt();
+////	Uint16 iBatVolt_HwOv_FltState = 0;			/*Fix : OCHW DIO 정보 출력 FLT 순간 LOW, FLT 후 정지 및 평상시 HIGH Active LOW */
+//
+//	if (FdiagChkS_GetAuxBatVoltSnsrState() == AUXBATVOLTSNSR_NORMAL)
+//	{
+//		switch (giAuxBatVoltState)
+//		{
+//		case AUXBATVOLT_NORMAL:
+//			if (fVAuxBat > gfAuxBatVolt_VoltHiFlt_Cal)
+//			{
+//				FdiagChkS_ChangeAuxBatVoltState(AUXBATVOLT_SWOV_FLT);
+//			}
+//			else if (fVAuxBat < gfAuxBatVolt_VoltLowFlt_Cal)
+//			{
+//				FdiagChkS_ChangeAuxBatVoltState(AUXBATVOLT_SWUV_INHIBIT);
+//			}
+//			break;
+//
+//		case AUXBATVOLT_SWOV_FLT:
+//			TIMER_TICK(giAuxBatVolt_SwOv_Timer);
+//			if (giAuxBatVolt_SwOv_Timer > giAuxBatVolt_SwOv_TimerCal)		//100ms
+//			{
+//				TIMER_RESET(giAuxBatVolt_SwOv_Timer);
+//				if (fVAuxBat < gfAuxBatVolt_VoltLowFlt_Cal)
+//				{
+//					FdiagChkS_ChangeAuxBatVoltState(AUXBATVOLT_SWUV_INHIBIT);
+//				}
+//				else if ((fVAuxBat >= gfAuxBatVolt_VoltLowFlt_Cal)
+//					&& (fVAuxBat < gfAuxBatVolt_VoltHiFltClr_Cal)
+//					)
+//				{
+//					FdiagChkS_ChangeAuxBatVoltState(AUXBATVOLT_NORMAL);
+//				}
+//			}
+//			break;
+//
+//		case AUXBATVOLT_SWUV_INHIBIT:
+//			TIMER_TICK(giAuxBatVolt_SwUv_Timer);
+//			if (giAuxBatVolt_SwUv_Timer > giAuxBatVolt_SwUv_TimerCal)		//100ms
+//			{
+//				TIMER_RESET(giAuxBatVolt_SwUv_Timer);
+//				if (fVAuxBat > gfAuxBatVolt_VoltHiFlt_Cal)
+//				{
+//					FdiagChkS_ChangeAuxBatVoltState(AUXBATVOLT_SWOV_FLT);
+//				}
+//				else if ((fVAuxBat <= gfAuxBatVolt_VoltHiFlt_Cal)
+//					&& (fVAuxBat > gfAuxBatVolt_VoltLowFltClr_Cal))
+//				{
+//					FdiagChkS_ChangeAuxBatVoltState(AUXBATVOLT_NORMAL);
+//				}
+//			}
+//			break;
+//
+//		default:
+//			//		giAuxBatVoltState = AUXBATVOLT_NORMAL;
+//			break;
+//		}
+//	}
+//	else
+//	{
+//		TIMER_RESET(giAuxBatVolt_SwOv_Timer);
+//		TIMER_RESET(giAuxBatVolt_SwUv_Timer);
+//		FdiagChkS_ChangeAuxBatVoltState(AUXBATVOLT_NORMAL);
+//	}
+//}
+//
+///*----------------------------------------------------------------------------
+//	Func : 보조 전원 전압 상태 변경
+//	Period : Non
+//	Parameter : giAuxBatVoltState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_ChangeAuxBatVoltState(AUXBATVOLT_STATE state)
+//{
+//	giAuxBatVoltState = state;
+//}
+//
+//
+///*----------------------------------------------------------------------------
+//	Func : SMPS 전압 센서 SW 고장 진단
+//	Period : 1ms
+//	Parameter : giSmpsVoltState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_RunSmpsVoltSnsrState(void)
+//{
+//	float fVSmps = MonApi_GetSmpsVolt();
+//	float fVauxbat = MonApi_GetAuxBatVolt();
+//	float fAdcResult = MonApi_GetSmpsVoltAdcResult();			//Smps ADC
+//
+//	switch (giSmpsVoltState)
+//	{
+//	case SMPSVOLTSNSR_READY:
+//	case SMPSVOLTSNSR_NORMAL:
+//		if (fAdcResult >= gfAdcSnsrVoltHiFltCal)			//ADC 입력전압 4.5V이상 10ms 유지 시
+//		{
+//			TIMER_RESET(giSmpsVoltSnsr_VoltLoFlt_Timer);
+//			TIMER_RESET(giSmpsVoltSnsr_RationalFlt_Timer);
+//			TIMER_TICK(giSmpsVoltSnsr_VoltHiFlt_Timer);
+//			if (giSmpsVoltSnsr_VoltHiFlt_Timer >= giSmpsVoltSnsr_VoltHiFlt_TimerCal)
+//			{
+//				FdiagChkS_ChangeSmpsVoltSnsrState(SMPSVOLTSNSR_VOLTHI_FLT);
+//				TIMER_RESET(giSmpsVoltSnsr_VoltHiFlt_Timer);
+//			}
+//		}
+//		else if (fAdcResult <= gfAdcSnsrVoltLoFltCal)	//ADC 입력전압 0.5V 이하 10ms 유지 시
+//		{
+//			TIMER_RESET(giSmpsVoltSnsr_VoltHiFlt_Timer);
+//			TIMER_RESET(giSmpsVoltSnsr_RationalFlt_Timer);
+//			TIMER_TICK(giSmpsVoltSnsr_VoltHiFlt_Timer);
+//			if (giSmpsVoltSnsr_VoltLoFlt_Timer >= giSmpsVoltSnsr_VoltLoFlt_TimerCal)
+//			{
+//				FdiagChkS_ChangeSmpsVoltSnsrState(SMPSVOLTSNSR_VOLTLO_FLT);
+//				TIMER_RESET(giSmpsVoltSnsr_VoltLoFlt_Timer);
+//			}
+//		}
+//		else if ((FdiagChkS_GetAuxBatVoltState() == AUXBATVOLT_NORMAL)
+//			&& (fabs(fVauxbat - fVSmps) >= gfIgVoltSnsr_RationalFlt_Cal) //Can값 센싱값 비교 오차 크게 발생시
+//			)
+//		{
+//			TIMER_RESET(giSmpsVoltSnsr_VoltHiFlt_Timer);
+//			TIMER_RESET(giSmpsVoltSnsr_VoltLoFlt_Timer);
+//			TIMER_TICK(giSmpsVoltSnsr_RationalFlt_Timer);
+//			if (giSmpsVoltSnsr_RationalFlt_Timer >= giSmpsVoltSnsr_RationalFlt_TimerCal)
+//			{
+//				FdiagChkS_ChangeSmpsVoltSnsrState(SMPSVOLTSNSR_RATIONAL_FLT);
+//				TIMER_RESET(giSmpsVoltSnsr_RationalFlt_Timer);
+//			}
+//		}
+//		else
+//		{
+//			TIMER_RESET(giSmpsVoltSnsr_VoltHiFlt_Timer);
+//			TIMER_RESET(giSmpsVoltSnsr_VoltLoFlt_Timer);
+//			TIMER_RESET(giSmpsVoltSnsr_RationalFlt_Timer);
+//			FdiagChkS_ChangeSmpsVoltSnsrState(SMPSVOLTSNSR_NORMAL);
+//		}
+//		break;
+//
+//	case SMPSVOLTSNSR_VOLTLO_FLT:
+//		break;
+//	case SMPSVOLTSNSR_VOLTHI_FLT:
+//		break;
+//	case SMPSVOLTSNSR_RATIONAL_FLT:
+//		break;
+//	default:
+//		break;
+//	}
+//}
+//
+///*----------------------------------------------------------------------------
+//	Func : SMPS 전압 센서 상태 변경
+//	Period : Non
+//	Parameter : giSmpsVoltState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_ChangeSmpsVoltSnsrState(SMPSVOLTSNSR_STATE state)
+//{
+//	giSmpsVoltSnsrState = state;
+//}
+//
+///*----------------------------------------------------------------------------
+//	Func : SMPS전압 상태 진단
+//	Period : 1ms
+//	Parameter : giSmpsVoltState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_RunSmpsVoltState(void)
+//{
+//	float fVSmps = MonApi_GetSmpsVolt();
+//	//	Uint16 iBatVolt_HwOv_FltState = 0U;			/*Fix : OCHW DIO 정보 출력 FLT 순간 LOW, FLT 후 정지 및 평상시 HIGH Active LOW */
+//
+//	if (FdiagChkS_GetSmpsVoltSnsrState() == SMPSVOLTSNSR_NORMAL)
+//	{
+//		switch (giSmpsVoltState)
+//		{
+//		case SMPSVOLT_NORMAL:
+//			if (fVSmps > gfSmpsVolt_VoltHiFlt_Cal)
+//			{
+//				FdiagChkS_ChangeSmpsVoltState(SMPSVOLT_SWOV_FLT);
+//			}
+//			else if (fVSmps < gfSmpsVolt_VoltLowFlt_Cal)
+//			{
+//				FdiagChkS_ChangeSmpsVoltState(SMPSVOLT_SWUV_INHIBIT);
+//			}
+//			break;
+//
+//		case SMPSVOLT_SWOV_FLT:
+//			TIMER_TICK(giSmpsVolt_SwOv_Timer);
+//			if (giSmpsVolt_SwOv_Timer > giSmpsVolt_SwOv_TimerCal)		//100ms
+//			{
+//				TIMER_RESET(giSmpsVolt_SwOv_Timer);
+//				if (fVSmps < gfSmpsVolt_VoltLowFlt_Cal)
+//				{
+//					FdiagChkS_ChangeSmpsVoltState(SMPSVOLT_SWUV_INHIBIT);
+//				}
+//				else if ((fVSmps >= gfSmpsVolt_VoltLowFlt_Cal)
+//					&& (fVSmps < gfSmpsVolt_VoltHiFltClr_Cal)
+//					)
+//				{
+//					FdiagChkS_ChangeSmpsVoltState(SMPSVOLT_NORMAL);
+//				}
+//			}
+//			break;
+//
+//		case SMPSVOLT_SWUV_INHIBIT:
+//			TIMER_TICK(giSmpsVolt_SwUv_Timer);
+//			if (giSmpsVolt_SwUv_Timer > giSmpsVolt_SwUv_TimerCal)		//100ms
+//			{
+//				TIMER_RESET(giSmpsVolt_SwUv_Timer);
+//				if (fVSmps > gfSmpsVolt_VoltHiFlt_Cal)
+//				{
+//					FdiagChkS_ChangeSmpsVoltState(SMPSVOLT_SWOV_FLT);
+//				}
+//				else if ((fVSmps <= gfSmpsVolt_VoltHiFlt_Cal)
+//					&& (fVSmps > gfSmpsVolt_VoltLowFltClr_Cal))
+//				{
+//					FdiagChkS_ChangeSmpsVoltState(SMPSVOLT_NORMAL);
+//				}
+//			}
+//			break;
+//
+//		default:
+//			//		giSmpsVoltState = SMPSVOLT_NORMAL;
+//			break;
+//		}
+//	}
+//	else
+//	{
+//		TIMER_RESET(giSmpsVolt_SwOv_Timer);
+//		TIMER_RESET(giSmpsVolt_SwUv_Timer);
+//		FdiagChkS_ChangeSmpsVoltState(SMPSVOLT_NORMAL);
+//	}
+//}
+//
+///*----------------------------------------------------------------------------
+//	Func : SMPS 전압 상태 변경
+//	Period : Non
+//	Parameter : giSmpsVoltState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_ChangeSmpsVoltState(SMPSVOLT_STATE state)
+//{
+//	giSmpsVoltState = state;
+//}
+//
+//
+///*----------------------------------------------------------------------------
+//	Func : IG전압 센서 SW 진단
+//	Period : 1ms
+//	Parameter : giIgVoltSnsrState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_RunIgVoltSnsrState(void)
+//{
+//	float fAdcResult = MonApi_GetIgVoltAdcResult();
+//	float fVauxbat = MonApi_GetAuxBatVolt();
+//	float fVig = MonApi_GetIgVolt();
+//
+//	switch (giIgVoltSnsrState)
+//	{
+//	case IGVOLTSNSR_READY:
+//	case IGVOLTSNSR_NORMAL:
+//		if (fAdcResult >= gfAdcSnsrVoltHiFltCal)
+//		{
+//			TIMER_RESET(giIgVoltSnsr_VoltLowFlt_Timer);
+//			TIMER_RESET(giIgVoltSnsr_RationalFlt_Timer);
+//			TIMER_TICK(giIgVoltSnsr_VoltHiFlt_Timer);
+//			if (giIgVoltSnsr_VoltHiFlt_Timer >= giIgVoltSnsr_VoltHiFlt_TimerCal)
+//			{
+//				FdiagChkS_ChangeIgVoltSnsrState(IGVOLTSNSR_VOLTHI_FLT);
+//				TIMER_RESET(giIgVoltSnsr_VoltHiFlt_Timer);
+//			}
+//		}
+//#if 0
+//		else if ((fAdcResult < gfAdcSnsrVoltLoFltCal))
+//		{
+//			TIMER_RESET(giIgVoltSnsr_VoltHiFlt_Timer);
+//			TIMER_RESET(giIgVoltSnsr_RationalFlt_Timer);
+//			TIMER_TICK(giIgVoltSnsr_VoltLowFlt_Timer);
+//			if (giIgVoltSnsr_VoltLowFlt_Timer >= giIgVoltSnsr_VoltLowFlt_TimerCal)
+//			{
+//				FdiagChkS_ChangeIgVoltSnsrState(IGVOLTSNSR_VOLTLO_FLT);
+//				TIMER_RESET(giIgVoltSnsr_VoltLowFlt_Timer);
+//			}
+//		}
+//#endif
+//		else if ((FdiagChkS_GetAuxBatVoltState() == AUXBATVOLT_NORMAL)
+//			&& (fabs(fVauxbat - fVig) >= gfIgVoltSnsr_RationalFlt_Cal) //Can값 센싱값 비교 오차 크게 발생시
+//			)
+//		{
+//			TIMER_RESET(giIgVoltSnsr_VoltHiFlt_Timer);
+//			TIMER_RESET(giIgVoltSnsr_VoltLowFlt_Timer);
+//			TIMER_TICK(giIgVoltSnsr_RationalFlt_Timer);
+//			if (giIgVoltSnsr_RationalFlt_Timer >= giIgVoltSnsr_RationalFlt_TimerCal)
+//			{
+//				FdiagChkS_ChangeIgVoltSnsrState(IGVOLTSNSR_RATIONAL_FLT);
+//				TIMER_RESET(giIgVoltSnsr_RationalFlt_Timer);
+//			}
+//		}
+//		else
+//		{
+//			TIMER_RESET(giIgVoltSnsr_VoltHiFlt_Timer);
+//			TIMER_RESET(giIgVoltSnsr_VoltLowFlt_Timer);
+//			TIMER_RESET(giIgVoltSnsr_RationalFlt_Timer);
+//			FdiagChkS_ChangeIgVoltSnsrState(IGVOLTSNSR_NORMAL);
+//		}
+//		break;
+//	case IGVOLTSNSR_VOLTLO_FLT:
+//		break;
+//	case IGVOLTSNSR_VOLTHI_FLT:
+//		break;
+//	case IGVOLTSNSR_RATIONAL_FLT:
+//		break;
+//	default:
+//		break;
+//	}
+//}
+///*----------------------------------------------------------------------------
+//	Func : IG 전압 센서 상태 변경
+//	Period : Non
+//	Parameter : giIgVoltSnsrState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_ChangeIgVoltSnsrState(IGVOLTSNSR_STATE state)
+//{
+//	giIgVoltSnsrState = state;
+//}
+//
+//
+///*----------------------------------------------------------------------------
+//	Func : IG전원 상태 진단
+//	Period : 1ms
+//	Parameter : giIgVoltState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_RunIgVoltState(void)
+//{
+//	float fVIg = MonApi_GetIgVolt();
+//
+//	if (FdiagChkS_GetIGVoltSnsrState() == IGVOLTSNSR_NORMAL)
+//	{
+//		switch (giIgVoltState)
+//		{
+//		case IG_OFF:
+//			if (fVIg >= gfIgVolt_SwOv_Cal)
+//			{
+//				FdiagChkS_ChangeIgVoltState(IG_SWOV_FLT);
+//			}
+//			else if ((fVIg >= gfIgVolt_ON_Cal) && (fVIg < gfIgVolt_SwOv_Cal))
+//			{
+//				FdiagChkS_ChangeIgVoltState(IG_ON);
+//			}
+//			break;
+//
+//		case IG_GOOFF:
+//			TIMER_TICK(giIgVolt_OFF_Timer);
+//			if (giIgVolt_OFF_Timer > giIgVolt_OFF_TimerCal)						//s
+//			{
+//				TIMER_RESET(giIgVolt_OFF_Timer);
+//				FdiagChkS_ChangeIgVoltState(IG_OFF);
+//			}
+//			if (fVIg >= gfIgVolt_SwOv_Cal)
+//			{
+//				TIMER_RESET(giIgVolt_OFF_Timer);
+//				FdiagChkS_ChangeIgVoltState(IG_SWOV_FLT);
+//			}
+//			else if ((fVIg >= gfIgVolt_ON_Cal) && (fVIg < gfIgVolt_SwOv_Cal))
+//			{
+//				TIMER_RESET(giIgVolt_OFF_Timer);
+//				FdiagChkS_ChangeIgVoltState(IG_ON);
+//			}
+//			break;
+//
+//		case IG_ON:
+//			if (fVIg > gfIgVolt_SwOv_Cal)
+//			{
+//				FdiagChkS_ChangeIgVoltState(IG_SWOV_FLT);
+//			}
+//			else if (fVIg < gfIgVolt_OFF_Cal)
+//			{
+//				FdiagChkS_ChangeIgVoltState(IG_GOOFF);
+//			}
+//			break;
+//
+//		case IG_SWOV_FLT:
+//			TIMER_TICK(giIg_SwOv_Flt_Timer);
+//			if (giIg_SwOv_Flt_Timer > giIg_SwOv_Flt_Timer_Cal)
+//			{
+//				TIMER_RESET(giIg_SwOv_Flt_Timer);
+//				if (fVIg < gfIgVolt_OFF_Cal)
+//				{
+//					FdiagChkS_ChangeIgVoltState(IG_OFF);
+//				}
+//				else if (fVIg < gfIgVolt_SwOvClr_Cal)
+//				{
+//					FdiagChkS_ChangeIgVoltState(IG_ON);
+//				}
+//			}
+//			break;
+//		default:
+//			break;
+//		}
+//	}
+//	else
+//	{
+//		TIMER_RESET(giIgVolt_OFF_Timer);
+//		TIMER_RESET(giIg_SwOv_Flt_Timer);
+//		FdiagChkS_ChangeIgVoltState(IG_OFF);
+//	}
+//}
+//
+///*----------------------------------------------------------------------------
+//	Func :IG 전압 상태 변경
+//	Period : Non
+//	Parameter : giAuxBatVoltState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_ChangeIgVoltState(IGVOLT_STATE state)
+//{
+//	giIgVoltState = state;
+//}
+//
+//
+///*----------------------------------------------------------------------------
+//	Func : 온도 센서 SW 고장 진단
+//	Period : 1ms
+//	Parameter : giTempSnsrState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_RunTempSnsrState(Uint16 SnsrNum)
+//{
+//	float fAdcResult = MonApi_GetNtcVoltAdcResult(SnsrNum);
+//	Uint16 iAuxBatVoltState = FdiagChkS_GetAuxBatVoltState();
+//
+//	if (iAuxBatVoltState == AUXBATVOLT_NORMAL)
+//	{
+//		switch (giTempSnsrState[SnsrNum])
+//		{
+//		case TEMPSNSR_READY:
+//		case TEMPSNSR_NORMAL:
+//			if (fAdcResult >= gfAdcSnsrVoltHiFltCal)			//ADC 입력전압 4.8V이상 즉시
+//			{
+//				TIMER_RESET(giTempSnsr_VoltLoFlt_Timer[SnsrNum]);
+//				TIMER_TICK(giTempSnsr_VoltHiFlt_Timer[SnsrNum]);
+//				if (giTempSnsr_VoltHiFlt_Timer[SnsrNum] >= giTempSnsr_VoltHiFlt_TimerCal)
+//				{
+//					FdiagChkS_ChangeTempSnsrState(SnsrNum, TEMPSNSR_VOLTHI_FLT);
+//					TIMER_RESET(giTempSnsr_VoltHiFlt_Timer[SnsrNum]);
+//					giTempSnsrFltFlag |= (0x0001U << SnsrNum);
+//				}
+//			}
+//			else if (fAdcResult <= gfAdcSnsrVoltLoFltCal)		//ADC 입력전압 0.2V 이하 즉시
+//			{
+//				TIMER_RESET(giTempSnsr_VoltHiFlt_Timer[SnsrNum]);
+//				TIMER_TICK(giTempSnsr_VoltLoFlt_Timer[SnsrNum]);
+//				if (giTempSnsr_VoltLoFlt_Timer[SnsrNum] >= giTempSnsr_VoltLoFlt_TimerCal)
+//				{
+//					FdiagChkS_ChangeTempSnsrState(SnsrNum, TEMPSNSR_VOLTLO_FLT);
+//					TIMER_RESET(giTempSnsr_VoltLoFlt_Timer[SnsrNum]);
+//					giTempSnsrFltFlag |= (0x0001U << SnsrNum);
+//				}
+//			}
+//			else
+//			{
+//				TIMER_RESET(giTempSnsr_VoltHiFlt_Timer[SnsrNum]);
+//				TIMER_RESET(giTempSnsr_VoltLoFlt_Timer[SnsrNum]);
+//				FdiagChkS_ChangeTempSnsrState(SnsrNum, TEMPSNSR_NORMAL);
+//			}
+//			break;
+//		case TEMPSNSR_VOLTLO_FLT:
+//			break;
+//		case TEMPSNSR_VOLTHI_FLT:
+//			break;
+//		case TEMPSNSR_RATIONAL_FLT:
+//			break;
+//		default:
+//			break;
+//		}
+//	}
+//	else
+//	{
+//		TIMER_RESET(giTempSnsr_VoltHiFlt_Timer[SnsrNum]);
+//		TIMER_RESET(giTempSnsr_VoltLoFlt_Timer[SnsrNum]);
+//		FdiagChkS_ChangeTempSnsrState(SnsrNum, TEMPSNSR_READY);
+//		giTempSnsrFltFlag = 0U;
+//	}
+//
+//}
+//
+///*----------------------------------------------------------------------------
+//	Func : 온도 센서 상태 변경
+//	Period : Non
+//	Parameter : giTempSnsrtState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_ChangeTempSnsrState(Uint16 SnsrNum, TEMPSNSR_STATE state)
+//{
+//	giTempSnsrState[SnsrNum] = state;
+//}
+//
+///*----------------------------------------------------------------------------
+//	Func : 과온 상태 진단 모듈
+//	Period : 1ms
+//	Parameter : giTempState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_RunTempState(Uint16 SnsrNum)
+//{
+//	float fTemp = MonApi_GetTemp(SnsrNum);
+//
+//	if ((giTempSnsrState[SnsrNum] == TEMPSNSR_NORMAL)
+//	    &&(SeqApi_GetInternalMainState() == STAT_NORMAL_STATE))
+//	{
+//		switch (giTempState[SnsrNum])
+//		{
+//		case TEMP_NORMAL:
+//			if (fTemp >= gfTempHighOnCal)
+//			{
+//				FdiagChkS_ChangeTempState(SnsrNum, TEMP_HIGH_FLT);
+//				giTempFltFlag |= (0x0001U << SnsrNum);
+//			}
+//			else if(fTemp >= gfTempHighDrtOnCal)
+//			{
+//				FdiagChkS_ChangeTempState(SnsrNum, TEMP_HIGH_DERATING);
+//			}
+//			break;
+//		case TEMP_HIGH_DERATING:
+//			if (fTemp >= gfTempHighOnCal)
+//			{
+//				FdiagChkS_ChangeTempState(SnsrNum, TEMP_HIGH_FLT);
+//			}
+//			else if (fTemp < gfTempHighDrtOffCal)
+//			{
+//				FdiagChkS_ChangeTempState(SnsrNum, TEMP_NORMAL);
+//			}
+//			break;
+//		case TEMP_HIGH_FLT:
+//#ifndef DefDisableFltRetry
+//			TIMER_TICK(giTempHigh_Timer[SnsrNum]);
+//			if (giTempHigh_Timer[SnsrNum] > giTempHigh_TimerCal)		//100ms
+//			{
+//				TIMER_RESET(giTempHigh_Timer[SnsrNum]);
+//				if (fTemp < gfTempHighDrtOffCal)
+//				{
+//					FdiagChkS_ChangeTempState(SnsrNum, TEMP_NORMAL);
+//					giTempFltFlag &= (~(0x0001U << SnsrNum));
+//				}
+//			}
+//#endif
+//			break;
+//		default:
+//			break;
+//		}
+//	}
+//	else
+//	{
+//		giTempHigh_Timer[SnsrNum] = 0U;
+//		FdiagChkS_ChangeTempState(SnsrNum, TEMP_NORMAL);
+//		giTempFltFlag = 0U;
+//	}
+//}
+//
+///*----------------------------------------------------------------------------
+//	Func : 과온진단 상태 변경
+//	Period : Non
+//	Parameter : giTempState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_ChangeTempState(Uint16 SnsrNum, TEMP_STATE state)
+//{
+//	giTempState[SnsrNum] = state;
+//}
+//
+//
+///*----------------------------------------------------------------------------
+//    Func : Derating 상태 진단 모듈
+//    Period : 1ms
+//    Parameter : giDeratingState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_RunDrtState()
+//{
+//	float fVGrid = MonApi_GetVolt(VoltSnsrGrid);
+//	TEMP_STATE iTempState[TempSnsrNum] = { TEMP_NORMAL, };
+//	Uint16 iTempDrtFlag = 0U;
+//	Uint16 i = 0U;
+//
+//	for (i = 0U; i < TempSnsrNum; i++)
+//	{
+//	    iTempState[i] = (TEMP_STATE)FdiagChkS_GetTempState(i);
+//	    iTempDrtFlag |= (Uint16)iTempState[i];
+//	}
+//
+//	switch (giDeratingState)
+//	{
+//	case DERATING_NORMAL:
+//		if ((fVGrid <= gfVGridDrtStateOnCal)
+//			&& ((TEMP_STATE)iTempDrtFlag == TEMP_HIGH_DERATING)
+//			)
+//		{
+//			FdiagChkS_ChangeDrtState(DERATING_GRIDVOLTTEMP);
+//		}
+//		else if ((fVGrid <= gfVGridDrtStateOnCal)
+//			&& ((TEMP_STATE)iTempDrtFlag != TEMP_HIGH_DERATING)
+//			)
+//		{
+//			FdiagChkS_ChangeDrtState(DERATING_GRIDVOLT);
+//		}
+//		else if ((fVGrid > gfVGridDrtStateOnCal)
+//			&& ((TEMP_STATE)iTempDrtFlag == TEMP_HIGH_DERATING)
+//			)
+//	    {
+//			FdiagChkS_ChangeDrtState(DERATING_TEMP);
+//	    }
+//	    break;
+//	case DERATING_GRIDVOLT:
+//		if ((fVGrid > gfVGridDrtStateOffCal)
+//			&& ((TEMP_STATE)iTempDrtFlag != TEMP_HIGH_DERATING)
+//			)
+//		{
+//			FdiagChkS_ChangeDrtState(DERATING_NORMAL);
+//		}
+//		else if ((fVGrid > gfVGridDrtStateOnCal)
+//			&& ((TEMP_STATE)iTempDrtFlag == TEMP_HIGH_DERATING)
+//			)
+//		{
+//				FdiagChkS_ChangeDrtState(DERATING_TEMP);
+//		}
+//		else if ((fVGrid <= gfVGridDrtStateOnCal)
+//			&& ((TEMP_STATE)iTempDrtFlag == TEMP_HIGH_DERATING)
+//			)
+//		{
+//				FdiagChkS_ChangeDrtState(DERATING_GRIDVOLTTEMP);
+//		}
+//		break;
+//	case DERATING_TEMP:
+//		if ((fVGrid <= gfVGridDrtStateOnCal)
+//			&& ((TEMP_STATE)iTempDrtFlag == DERATING_NORMAL)
+//			)
+//		{
+//			FdiagChkS_ChangeDrtState(DERATING_GRIDVOLT);
+//		}
+//		else if((fVGrid > gfVGridDrtStateOffCal)
+//			&& ((TEMP_STATE)iTempDrtFlag == DERATING_NORMAL)
+//			)
+//		{
+//			FdiagChkS_ChangeDrtState(DERATING_NORMAL);
+//		}
+//		else if ((fVGrid <= gfVGridDrtStateOnCal)
+//			&& ((TEMP_STATE)iTempDrtFlag == TEMP_HIGH_DERATING)
+//			)
+//			{
+//				FdiagChkS_ChangeDrtState(DERATING_GRIDVOLTTEMP);
+//		}
+//		break;
+//	case DERATING_GRIDVOLTTEMP:
+//		if ((fVGrid <= gfVGridDrtStateOnCal)
+//			&& ((TEMP_STATE)iTempDrtFlag != TEMP_HIGH_DERATING)
+//			)
+//			{
+//				FdiagChkS_ChangeDrtState(DERATING_GRIDVOLT);
+//		}
+//		else if ((fVGrid > gfVGridDrtStateOnCal)
+//			&& ((TEMP_STATE)iTempDrtFlag == TEMP_HIGH_DERATING)
+//			)
+//			{
+//				FdiagChkS_ChangeDrtState(DERATING_TEMP);
+//		}
+//		else if ((fVGrid > gfVGridDrtStateOffCal)
+//			&& ((TEMP_STATE)iTempDrtFlag == DERATING_NORMAL)
+//			)
+//		{
+//			FdiagChkS_ChangeDrtState(DERATING_NORMAL);
+//		}
+//		break;
+//	default:
+//		break;
+//	}
+//  }
+//
+///*----------------------------------------------------------------------------
+//    Func : Derating 상태 변경
+//    Period : Non
+//    Parameter : giDeratingState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_ChangeDrtState(DERATING_STATE state)
+//{
+//    giDeratingState = state;
+//}
+//
+///*----------------------------------------------------------------------------
+//    Func : 전류 HW FLT ISR, DIO에 rising edge 발생시 동작 수행
+//    Period : Non
+//    Parameter : giGateState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_ChkGateHwFlt(Uint16 SnsrNum)
+//{
+//#ifndef DefDisableHWFlt
+//    FdiagChkS_SetGateHw_Interrupt(SnsrNum);
+//    FdiagChkS_ChangeGateState(SnsrNum, GATE_HWFLT);
+//    SeqApi_SetInteralMainState(STAT_FAULT_STATE);
+//    CtrApi_ClearBoostPwmEnable();       /* Fix : PWM OFF 함수*/
+//#endif
+//}
+//
+//
+///*----------------------------------------------------------------------------
+//    Func : Gate 상태 진단 모듈
+//    Period : ISR
+//    Parameter : giGateState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_RunGateSwFlt(Uint16 SnsrNum)
+//{
+//	Uint8 iGateState = 0U;
+//	Uint8 iGateFltDiState = 0U;
+//	Uint8 iHwFltDiState =  0U;
+//	Uint8 iCurrVoltState = 0U;
+//
+//	iGateState = FdiagChkS_GetGateState(SnsrNum);
+//	iHwFltDiState =  (API_GPIO_IPH_SCP()) | (API_GPIO_IDC_SCP()) | (API_GPIO_LV_SCP()) | (API_GPIO_LV_OVP());
+//
+//	if (SnsrNum == GateSnsrPfc)
+//	{
+//		iGateFltDiState = API_GPIO_XLT_PFC_A();
+//		iCurrVoltState =( FdiagChkIO_GetCurrState(CurrSnsrPhase) | FdiagChkIO_GetVoltState(VoltSnsrGrid) | FdiagChkIO_GetVoltState(VoltSnsrDCLink));
+//
+//	}
+//	else if (SnsrNum == GateSnsrDcDc)
+//	{
+//		iGateFltDiState = API_GPIO_XLT_DC_A();
+//		iCurrVoltState = (FdiagChkIO_GetCurrState(CurrSnsrDcDcOut) | FdiagChkIO_GetVoltState(VoltSnsrOut) | FdiagChkIO_GetVoltState(VoltSnsrDCLink));
+//	}
+//
+//
+//    switch (iGateState)
+//    {
+//    case GATE_NOTREADY :
+//		break;
+//    case GATE_NORMAL:
+//		if ((iHwFltDiState == CLEAR) && (iCurrVoltState == CLEAR) && (iGateFltDiState == SET))
+//		{
+//			FdiagChkS_SetPwmEnState(SnsrNum, CLEAR);
+//			FdiagChkS_ChangeGateState(SnsrNum, GATE_HWFLT);
+//		}
+//		else if (iGateFltDiState == SET)
+//		{
+//			FdiagChkS_SetPwmEnState(SnsrNum, CLEAR);
+//			FdiagChkS_ChangeGateState(SnsrNum, GATE_NOTREADY);
+//		}
+//    case GATE_HWFLT:
+//        break;
+//    default:
+//        break;
+//    }
+//
+//
+//}
+//
+//
+///*----------------------------------------------------------------------------
+//    Func : Gate 상태 진단 모듈
+//    Period : 1ms
+//    Parameter : giGateState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_RunGateState(Uint16 SnsrNum)
+//{
+//	Uint8 iGateState = 0U;
+//	Uint8 iGateFltDiState = 0U;
+//	Uint8 iHwFltDiState = 0U;
+//	Uint8 iCurrVoltState = 0U;
+//
+//	iGateState = FdiagChkS_GetGateState(SnsrNum);
+//	iHwFltDiState = API_GPIO_IPH_SCP() | API_GPIO_IDC_SCP() | API_GPIO_LV_SCP() | API_GPIO_LV_OVP();
+//
+//	if (SnsrNum == GateSnsrPfc)
+//	{
+//		iGateFltDiState = API_GPIO_XLT_PFC_A();
+//		iCurrVoltState = (FdiagChkIO_GetCurrState(CurrSnsrPhase) | FdiagChkIO_GetVoltState(VoltSnsrGrid) | FdiagChkIO_GetVoltState(VoltSnsrDCLink));
+//
+//	}
+//	else if (SnsrNum == GateSnsrDcDc)
+//	{
+//		iGateFltDiState = API_GPIO_XLT_DC_A();
+//		iCurrVoltState = (FdiagChkIO_GetCurrState(CurrSnsrDcDcOut) | FdiagChkIO_GetVoltState(VoltSnsrOut) | FdiagChkIO_GetVoltState(VoltSnsrDCLink));
+//	}
+//
+//	switch (iGateState)
+//	{
+//	case GATE_NOTREADY:
+//#ifndef DefDisableGateRdyInhibit
+//#endif
+//		if ((iHwFltDiState == CLEAR) && (iCurrVoltState == CLEAR))
+//		{
+//			if (iGateFltDiState == SET)
+//			{
+//				FdiagChkS_SetPwmEnState(SnsrNum, SET);
+//				TIMER_TICK(giGate_NotRdy_Timer[SnsrNum]);
+//				if (giGate_NotRdy_Timer[SnsrNum] > giGate_NotRdy_TimerCal)      //100ms
+//				{
+//					TIMER_RESET(giGate_NotRdy_Timer[SnsrNum]);
+//					FdiagChkS_SetPwmEnState(SnsrNum, CLEAR);
+//					FdiagChkS_ChangeGateState(SnsrNum, GATE_HWFLT);
+//				}
+//			}
+//			else
+//			{
+//				FdiagChkS_ChangeGateState(SnsrNum, GATE_NORMAL);
+//				TIMER_RESET(giGate_NotRdy_Timer[SnsrNum]);
+//			}
+//		}
+//		else
+//		{
+//			TIMER_RESET(giGate_NotRdy_Timer[SnsrNum]);
+//			FdiagChkS_SetPwmEnState(SnsrNum, CLEAR);
+//		}
+//		break;
+//	case GATE_NORMAL:
+//		break;
+//	case GATE_HWFLT:
+//#ifndef	DefDisableFltRetry
+//		TIMER_TICK(giGate_Flt_Timer[SnsrNum]);
+//		if (giGate_Flt_Timer[SnsrNum] > (giGate_Flt_TimerCal >> 1U))//50ms
+//		{
+//			FdiagChkS_SetPwmEnState(SnsrNum, SET);
+//		}
+//		if (giGate_Flt_Timer[SnsrNum] > giGate_Flt_TimerCal)      //100ms
+//		{
+//			TIMER_RESET(giGate_Flt_Timer[SnsrNum]);
+//
+//			giGate_Flt_count[SnsrNum]++;
+//
+//			giGate_Flt_HealCycle[SnsrNum] = 0U;
+//
+//			giGate_Flt_HealState[SnsrNum] = SET;
+//
+//			//            LIMIT_MAX((giGate_Flt_count[SnsrNum]), giGate_Flt_count_MaxDTCCal);
+//			if (giGate_Flt_count[SnsrNum] >= giGate_Flt_count_MaxDTCCal)
+//			{
+//				giGate_Flt_count[SnsrNum] = giGate_Flt_count_MaxDTCCal;
+//			}
+//			if ((iHwFltDiState == CLEAR) && (iCurrVoltState == CLEAR) && (iGateFltDiState == CLEAR))
+//			{
+//				{
+//					FdiagChkS_ChangeGateState(SnsrNum, GATE_NORMAL);
+//				}
+//			}
+//			else
+//			{
+//				FdiagChkS_SetPwmEnState(SnsrNum, CLEAR);
+//			}
+//		}
+//#endif
+//
+//		break;
+//	default:
+//		break;
+//	}
+//
+//}
+//
+///*----------------------------------------------------------------------------
+//    Func : Gate 고장 Heal
+//    Period : 100ms
+//    Parameter : giGate_Flt_count
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_GateHwFltHealCount(Uint16 SnsrNum)
+//{
+//    if (giGate_Flt_HealState[SnsrNum] == SET)
+//    {
+//        if (giGate_Flt_HealCycle[SnsrNum] > giGate_HwScp_HealCnt_TimerCal)
+//        {
+//            TIMER_RESET(giGate_Flt_HealCycle[SnsrNum]);
+//            if (giGate_Flt_count[SnsrNum] > 0U)
+//            {
+//                giGate_Flt_count[SnsrNum]--;
+//            }
+//            else
+//            {
+//                giGate_Flt_HealState[SnsrNum] = CLEAR;
+//            }
+//        }
+//        else
+//        {
+//            TIMER_TICK(giGate_Flt_HealCycle[SnsrNum]);
+//        }
+//    }
+//}
+//
+///*----------------------------------------------------------------------------
+//    Func : Gate 상태 변경
+//    Period : Non
+//    Parameter : giGateState
+//----------------------------------------------------------------------------*/
+//void FdiagChkS_ChangeGateState(Uint16 SnsrNum, GATE_STATE state)
+//{
+//    giGateState[SnsrNum] = state;
+//}
+//
+/*----------------------------------------------------------------------------
+	Func : Pwm Enable 상태 변경
+	Period : Non
+	Parameter : giGateState
+----------------------------------------------------------------------------*/
+void FdiagChkS_SetPwmEnState(Uint16 SnsrNum, Uint8 state)
+{
+	if (SnsrNum == GateSnsrPfc)
+	{
+		if (state == CLEAR)
+		{
+		    ItrCom_DisablePfcPWM();
+//			API_PFC_EMIOS_STOP();
+		}
+		else if (state == SET)
+		{
+		    ItrCom_EnablePfcPWM();
+		}
+	}
+	else if (SnsrNum == GateSnsrDcDc)
+	{
+//		API_GPIO_DC_PWM_EN(state);
+		if (state == CLEAR)
+		{
+//			API_DC_EMIOS_STOP();
+		}
+	}
+#if 0
+	else if (SnsrNum == GateSnsrLv)
+	{
+		API_GPIO_LV_PWM_EN(state);
+	}
+#endif
+	giGatePwmEnFlag[SnsrNum] = state;
+}
+
+
+
+AUXBATVOLT_STATE FdiagChkS_GetAuxBatVoltState(void)		{ return giAuxBatVoltState; }
+Uint16 FdiagChkS_GetSmpsVoltState(void)					{ return giSmpsVoltState; }
+Uint16 FdiagChkS_GetIgVoltState(void)					{ return giIgVoltState; }
+Uint16 FdiagChkS_GetTempSnsrState(Uint16 SnsrNum)		{ return giTempSnsrState[SnsrNum]; }
+Uint16 FdiagChkS_GetTempState(Uint16 SnsrNum)			{ return giTempState[SnsrNum]; }
+DERATING_STATE FdiagChkS_GetDeratingState(void)			{ return giDeratingState; }
+Uint16 FdiagChkS_GetMalfuncState(void)					{ return giMalfuncState; }
+Uint16 FdiagChkS_GetPwmoutState(void)					{ return giPwmoutState; }
+Uint16 FdiagChkS_GetOperModeState(void)					{ return giOperModeState; }
+Uint16 FdiagChkS_GetAuxBatVoltSnsrState(void)			{ return giAuxBatVoltSnsrState; }
+Uint16 FdiagChkS_GetSmpsVoltSnsrState(void)				{ return giSmpsVoltSnsrState; }
+Uint16 FdiagChkS_GetIGVoltSnsrState(void)				{ return giIgVoltSnsrState; }
+Uint16 FdiagChkS_GetGateState(Uint16 SnsrNum)			{ return giGateState[SnsrNum]; }
+RLY_STATE FdiagChkS_GetRlyState(void)					{ return giRlyState;}

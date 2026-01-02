@@ -1,0 +1,154 @@
+/*
+ * AswVehicleDefine.h
+ *
+ *  Created on: 2023. 1. 4.
+ *      Author: poweryhs
+ */
+
+#ifndef ASW_ASWVEHICLEDEFINE_H_
+#define ASW_ASWVEHICLEDEFINE_H_
+
+
+ /*============================================================================
+     Includes
+ ============================================================================*/
+
+ /*============================================================================
+     Macros
+ ============================================================================*/
+
+#define ICCUFirmVer         230310_T00_V1_0
+#define OBCFirmVer          230310_T00_V1_0
+#define LDCFirmVer          230310_T00_V1_0
+#define DefOBCType          1      // 1: totempolePFC + LLC 2병렬
+#define DefLDCType          1      // 1: ACF, PSFB
+#define DefFdcType          1      // 1: ACF, PSFB
+ //CCS상에서 기능 검증
+#define TestMode            4      // 0: Normal 모드 1 : sw로직 검증, 2 : Openloop Test, 3 : 출력전압 및 전류 제어. 4 : 입출력, 전류 제어
+#if(TestMode == 0)
+#elif(TestMode == 1)
+#elif(TestMode == 2)
+#elif(TestMode == 3)
+#elif(TestMode == 4)
+#define DefInhibitTest
+#define DefControlTest
+//#define OpenloopPwmTest
+//#define DefDisableInVoltCtr
+//#define DefOutVoltSS
+//#define DefDisableInVoltDrt
+#define DefAdaptiveGainControl
+#define DefDisableVoltUVInhibit
+//#define DefDisableInVoltHighInhibit
+#define DefDisableGateRdyInhibit      
+//#define DefDisableFltRetry
+//#define DefTempAdcTest
+//#define DefVoltAdcTest
+//#define DefCurrAdcTest
+#define DefDisableHWFlt
+//#define DefOutVoltRisingEdgeDet        
+#define DefDisableSnsrFltDiag
+#define DefDisableCom
+#define DefDisbaleInterlock
+#endif
+
+#if(DefOBCType == 1)
+#ifdef DefInhibitTest
+#define AdcNum              14U
+#else
+#define AdcNum              13U
+#endif
+#define AdcCurrPhase1       0U
+#define AdcCurrPhase2       1U
+#define AdcCurrDcDcOut1     2U
+#define AdcCurrDcDcOut2     3U
+#define AdcVoltGrid         4U
+#define AdcVoltDCLink       5U
+#define AdcVoltOut          6U
+#define AdcVoltNtcPFC       7U
+#define AdcVoltNtcDCDC      8U
+#define AdcVoltNtcHsink     9U
+#define AdcVoltAuxBat       10U
+#define AdcVoltSmps         11U
+#define AdcVoltIG           12U
+#ifdef DefInhibitTest       
+#define AdcInhibit          13U
+#endif
+
+#define BoostPFCNum         2U       //Phase number
+#define DCDCNum             2U       //Phase number
+
+#define CurrSnsrNum         4U       //Number of Module
+#define CurrPfcSnsrNum      2U
+#define CurrDcDcSnsrNum     2U
+#define CurrSnsrPhase1      0U
+#define CurrSnsrPhase2      1U
+#define CurrSnsrDcDcOut1    2U
+#define CurrSnsrDcDcOut2    3U
+
+#define CurrLpfSnsrNum      4U       //Number of Module
+#define CurrSnsrLpfPhase1   0U
+#define CurrSnsrLpfPhase2   1U
+#define CurrSnsrLpfDcDcOut1 2U
+#define CurrSnsrLpfDcDcOut2 3U
+
+#define CurrCtrNum          4U       //Number of CtrModule
+#define CurrCtrPhase1       0U
+#define CurrCtrPhase2       1U
+#define CurrCtrDcDcOut1     2U
+#define CurrCtrDcDcOut2     3U
+
+#define VoltSnsrNum         3U       //Number of Module
+#define VoltSnsrGrid        0U
+#define VoltSnsrDCLink      1U
+#define VoltSnsrOut         2U
+
+#define VoltLpfSnsrNum      3U       //Number of Module
+#define VoltSnsrLpfGrid     0U
+#define VoltSnsrLpfDCLink   1U
+#define VoltSnsrLpfOut      2U
+
+#define VoltCtrNum          3U       //Number of Ctr Module
+#define VoltCtrGridPll      0U
+#define VoltCtrDCLink       1U
+#define VoltCtrOut          2U
+
+#define TempSnsrNum         3U       //Number of Module
+#define NtcSnsrBoost        0U       
+#define NtcSnsrDcDc         1U       
+#define NtcSnsrDcDc         1U       
+
+#define CurrFltNum          2U
+#define GateSnsrNum         2U
+#define GateSnsrPfc         0U
+#define GateSnsrDcDc        1U
+#define GateFltNum          2U
+#define GateRdyNum          2U
+#endif
+
+#define DefPFCBoostL           120.0e-6f
+#define DefPFCLinkCap          990.0e-6f
+#define DefOutCap              19.5e-6f
+
+
+
+/*============================================================================
+    Enumerations
+============================================================================*/
+
+/*============================================================================
+    Data Structures
+============================================================================*/
+
+/*============================================================================
+    Global variables
+============================================================================*/
+
+/*============================================================================
+    Private Variables/Constants
+============================================================================*/
+
+/*============================================================================
+    Function Prototypes
+============================================================================*/
+
+#endif /* ASW_ASWVEHICLEDEFINE_H_ */

@@ -1,0 +1,101 @@
+/*
+ * ItrCom.c
+ *
+ *  Created on: 2023. 1. 4.
+ *      Author: poweryhs
+ */
+
+
+/*============================================================================
+    Includes
+============================================================================*/
+#include "ItrComBswtoAsw.h"
+#ifndef DefSimul
+#include "../BSW/BswApi.h"
+#else if
+#include "../Main.h"
+#endif
+
+/*============================================================================
+    Macros
+============================================================================*/
+
+/*============================================================================
+    Enumerations
+============================================================================*/
+
+/*============================================================================
+    Data Structures
+============================================================================*/
+
+/*============================================================================
+    Global variables
+============================================================================*/
+Uint16 giInhibit = 0;
+/*============================================================================
+    Private Variables/Constants
+============================================================================*/
+
+/*============================================================================
+    Function Prototypes
+============================================================================*/
+
+/*============================================================================
+    Function Implementations
+============================================================================*/
+#if 0
+float ItrCom_GetCurr(Uint8 SnsrNum)                     { return gfCurrCalc[SnsrNum];}
+float ItrCom_GetVolt(Uint8 SnsrNum)                     { return gfVoltCalc[SnsrNum];}
+float ItrCom_GetTempVolt(Uint8 SnsrNum)                 { return gfNtcVoltCalc[SnsrNum];}
+float ItrCom_GetCurrRaw(Uint8 SnsrNum)                  { return gfCurrRaw[SnsrNum];}
+float ItrCom_GetVoltRaw(Uint8 SnsrNum)                  { return gfVoltRaw[SnsrNum];}
+float ItrCom_GetTempVoltRaw(Uint8 SnsrNum)              { return gfNtcVoltRaw[SnsrNum];}
+float ItrCom_GetTestInhibit()                           { return gfTestInhibit;}
+float ItrCom_GetVObcOutRefCalSimul()                    { return gfVObcOutRefCalSimul;}
+float ItrCom_GetVLdcOutRefCalSimul()                    { return gfVObcOutRefCalSimul; }
+
+void ItrCom_SetPwmPhase(Uint8 ch, float NomalizedPhase) { gfBswPwmPhase[ch-1] = NomalizedPhase; }
+void ItrCom_SetSrPwmduty(float Duty)                    { gfBswPwmSrDuty = Duty;}
+void ItrCom_EnableObcPWM()                              { giBswObcPwmEnable = TRUE;}
+void ItrCom_DisableObcPWM()                             { giBswObcPwmEnable = FALSE; }
+void ItrCom_EnableSrPWM()                               { giBswSrPwmEnable = TRUE;}
+void ItrCom_DisableSrPWM()                              { giBswSrPwmEnable = FALSE; }
+
+Uint8 ItrCom_GetPwmEvtNum (Uint8 ch)                    {return giPwmEvtNum;}
+#endif
+
+float ItrCom_GetCurr(Uint8 SnsrNum)                     { return BswApi_GetCurr(SnsrNum);}
+float ItrCom_GetVolt(Uint8 SnsrNum)                     { return BswApi_GetVolt(SnsrNum);}
+float ItrCom_GetCurrRaw(Uint8 SnsrNum)                  { return BswApi_GetCurrRaw(SnsrNum);}
+float ItrCom_GetVoltRaw(Uint8 SnsrNum)                  { return BswApi_GetVoltRaw(SnsrNum);}
+//float ItrCom_GetTestInhibit()                           { return gfTestInhibit;}
+//float ItrCom_GetVObcOutRefCalSimul()                    { return gfVObcOutRefCalSimul;}
+//float ItrCom_GetVLdcOutRefCalSimul()                    { return gfVObcOutRefCalSimul; }
+
+//void ItrCom_SetPwmPhase(Uint8 ch, float NomalizedPhase)         { BswApi_SetPwmPhase(ch, NomalizedPhase); }
+void ItrCom_SetPfcPwmduty(Uint8 ch, Bool Deadband, float Duty)    { BswApi_SetPwmDuty(ch, Deadband, Duty); }
+void ItrCom_SetPfcPwmADuty(Uint8 ch, float Duty)                 { BswApi_SetPwmADuty(ch, Duty); }
+void ItrCom_SetPfcPwmBDuty(Uint8 ch, float Duty)                 { BswApi_SetPwmBDuty(ch, Duty); }
+
+void ItrCom_EnablePfcPWM()                                      { BswApi_EnablePfcPwm(); }
+void ItrCom_EnablePfcHSPWM()                                    { BswApi_EnablePfcHSPwm(); }
+void ItrCom_DisablePfcPWM()                                     { BswApi_DisablePfcPwm(); }
+void ItrCom_DisablePfcHSPWM()                                   { BswApi_DisablePfcHSPwm(); }
+void ItrCom_PfcHSPwmPosDitheringMode()                          { BswApi_PfcHSPwmPosDitheringMode(); }
+void ItrCom_PfcHSPwmNegDitheringMode()                          { BswApi_PfcHSPwmNegDitheringMode(); }
+void ItrCom_PfcHSPwmNormalMode()                                { BswApi_PfcHSPwmNormalMode(); }
+
+//void ItrCom_EnableObcPWM()                                      { BswApi_EnableObcPWM();}
+//void ItrCom_DisableObcPWM()                                     { BswApi_DisableObcPWM();}
+//void ItrCom_EnableSrPWM()                                       { BswApi_EnableSrPWM();}
+//void ItrCom_DisableSrPWM()                                      { BswApi_DisableSrPWM();}
+
+Uint8 ItrCom_GetPwmEvtNum (Uint8 ch)                    { return BswApi_GetPwmEvtNum(ch); }
+float ItrCom_GetTestInhibit()                           { return giInhibit; }
+
+void ItrCom_EnablePfcRly()                              { BswApi_EnablePfcRly(); }
+void ItrCom_DisablePfcRly()                             { BswApi_DisablePfcRly(); }
+
+void ItrCom_PfcLSSw_PosEn()                             { BswApi_PfcLSSw_PosEn(); }
+void ItrCom_PfcLSSw_NegEn()                             { BswApi_PfcLSSw_NegEn(); }
+void ItrCom_PfcLSSw_DeadBand()                          { BswApi_PfcLSSw_DeadBand(); }

@@ -1,0 +1,172 @@
+/*============================================================================
+	Includes
+============================================================================*/
+#include "CtrCal.h"
+/*============================================================================
+	Macros
+============================================================================*/
+
+/*============================================================================
+	Enumerations
+============================================================================*/
+
+/*============================================================================
+	Data Structures
+============================================================================*/
+
+/*============================================================================
+	Global variables
+============================================================================*/
+
+//PFCState
+float gfVPfcDcLinkSSGainCal = 0.8f;
+Uint16 giVPfcSoftStart_TimerCal = 100U;		//100 * 1ms
+
+//(KEJ) PLL PI
+float gfGridPLLKpCal				= 2.0f * PI2 * DeffBWGridPLL;
+float gfGridPLLKiCal				= POW2( PI2 * DeffBWGridPLL);
+float gfGridPLLFF					= 60.0f * PI2;
+//float gfGridPLLKpCal = 2.0f * 0.707f * DeffBWGridPLL / 300.0f;
+//float gfGridPLLKiCal = DeffBWGridPLL * DeffBWGridPLL / 300.0f;
+//float gfGridPLLFF = 60.0f * PI2;
+
+//(KEJ) PFC DcLinkV PI
+float gfPfcDcLinkVoltPIKpCal		= 2.0f * PI2 * DeffBWPFCDCLinkVolt * DefPFCLinkCap;
+float gfPfcDcLinkVoltPIKiCal		= POW2(PI2 * DeffBWPFCDCLinkVolt) * DefPFCLinkCap;
+float gfPfcDcLinkVoltPIKpMinCal		= 2.0f * PI2 * DeffBWPFCDCLinkVolt * DefPFCLinkCap * 100.0f;
+float gfPfcDcLinkVoltPIKiMinCal		= POW2(PI2 * DeffBWPFCDCLinkVolt) * DefPFCLinkCap * 100.0f;
+float gfPfcDcLinkVoltPIOutMax		= 5500.0f * 2.0f;
+float gfPfcDcLinkVoltPIOutMin		= -5500.0f * 2.0f;
+float gfVPfcDcLinkRefMaxCal			= 800.0f;
+float gfVPfcDcLinkRefMinCal			= 370.0f;
+float gfDrPfcDcLinkVoltBsf			= 2.0f;
+
+//(KEJ) PFC DcLinkV Err Rate limiter
+float gfVPfcDcLinkCmdRateLimitCal = 1.0f;
+
+//(KEJ) PFC Curr PI
+//float gfPfcCurrPIKpCal				= 2.0f * PI2 * DeffBWPFCCurr * DefPFCBoostL * 0.5f;
+//float gfPfcCurrPIKiCal				= POW2(PI2 * DeffBWPFCCurr) * DefPFCBoostL * 0.25f;
+float gfPfcCurrPIKpCal              = 2.0f * PI2 * DeffBWPFCCurr * DefPFCBoostL;
+float gfPfcCurrPIKiCal              = POW2(PI2 * DeffBWPFCCurr) * DefPFCBoostL;
+float gfPfcCurrPIKpMaxCal			= 2.0f * PI2 * DeffBWPFCCurr * DefPFCBoostL / 100.0f;
+float gfPfcCurrPIKiMaxCal			= POW2(PI2 * DeffBWPFCCurr) * DefPFCBoostL / 100.0f;
+float gfPfcCurrPIOutMax				= 0.95f;
+float gfPfcCurrPIOutMin				= 0.05f;
+
+
+//Uint16 giPartCalcCplCntCal			= 500U;
+////float gfVPfcDcLinkCmdOffsetCal	 = 30.0;
+//float gfVPfcDcLinkCmdOffsetCal		= 0.0f;
+////float gfVPfcDcLinkCmdKCal			= 1.54166667f;
+//float gfVPfcDcLinkCmdKCal			= 19.0f/12.0f;
+//float gfVoMaxCal					= 770.0f;
+//
+//Uint16 gf1dTempDrtCntCal			= 2U;
+//float gfxDataDrtTempCal[2]			= { 80.f, 105.f};
+//float gfyDataDrtCurrCal[2]			= { 1.0f, 0.2f};
+//									
+//float gfGridVoltPIKpCal				= 0.40369f;
+//float gfGridVoltPIKiCal				= 0.40369f * 14460.0f * 0.5f;
+//float gfGridVoltPIKaCal				= 1.0f / 0.40369f;
+//
+//float gfGridEmiRCal					= 0.01f*4.0f;			//EMI필터 저항
+////float gfPfcDcLinkVoltPIKpCal		= 2.0f * PI2 * 10.0f * DefPFCLinkCap;					
+////float gfPfcDcLinkVoltPIKiCal		= POW2(PI2 * 10.0f) * DefPFCLinkCap;
+////float gfPfcDcLinkVoltPIKpMinCal		= 2.0f * PI2 * 10.0f * DefPFCLinkCap * 100.0f;			
+////float gfPfcDcLinkVoltPIKiMinCal		= POW2(PI2 * 10.0f) * DefPFCLinkCap * 100.0f;
+////float gfPfcDcLinkVoltPIOutMax		= 11000.0f * 1.3f;		
+////float gfPfcDcLinkVoltPIOutMin		= -11000.0f * 1.3f;		
+//float gfFrePfcDcLinkVoltLpf			= 80.0f;
+//float gfFrePfcDcLinkVoltBsf			= 110.0f;
+//float gfDrPfcDcLinkVoltBsf			= 0.25f;
+//
+//	
+//
+//float gfDdeadCal					= 0.007f;
+//float gfBoostDutyMaxCal				= 0.8f;
+
+////V2X Ctr
+//float gfV2LVoltRmsRefCal			= 220.0f;
+//float gfV2LVoltFreqRefCal			= 60.0f;
+//float gfVV2LCmdRateLimitCal			= 220.0f*SQRT2/(50.0e-3f/50.0e-6f);  //220*SQRT2/(50ms/50us);
+//float gfVV2LCmdCal					= 220.0f * SQRT2;
+//float gfVV2LRefMaxCal				= 230.0f;
+//float gfVV2LCmdMinCal				= 180.0f;
+//float gfVV2LSSGainCal				= 0.9f;
+//float giVV2LSoftStart_TimerCal		= 50.0e-3f / 50.0e-6f;	//(50ms/50us);
+//
+//float gfPV2GCmdCal					= 3600.0f;
+//float gfPV2GCmdRateLimitCal			= 3600.0f / (50.0e-3f / 50.0e-6f);
+//float gfPV2GRefMaxCal				= 3600.0f;
+//
+////DCDC OutVolt Ctr
+//Uint16 gf1dIDcDcCmdLimitCntCal		= 5U;
+//float gfxDataVGridRmsCal[5]			= { 85.0f,110.0f, 145.0f, 220.0f, 285.0f };
+//float gfyDataIDcDcCmdGainCal[5]		= { 0.2576f, 0.3333f, 0.3333f, 1.0f, 1.0f };
+//Uint16 gf1diRefMaxGenDataCntCal		= 4U;
+//float gfxDataVDcDcOutCal[4]			= { 240.0f, 270.0f, 435.0f, 520.0f };
+//float gfyDataiDcDcRefMaxCal[4]		= { 11.955f, 26.0f, 26.0f, 21.75f };
+//float gfIDcDcOutRefMaxRateLimitCal	= 0.26f;		// 100ms
+//
+//float gfVDcDcOutCmdCal				= 520.0f;
+//float gfVDcDcCtrKpCal				= 2.0f*PI2*100.0f* DefOutCap;
+//float gfVDcDcCtrKiCal				= POW2(PI2 * 100.0f) * DefOutCap;
+//float gfVDcDcCtrKaCal				= 1.0f/(2.0f * PI2 * 100.0f * DefOutCap*400.0f);
+//
+////DCDC LinkVolt Ctr
+//float gfVV2XDcLinkCmdOffsetCal		= 0.0f;
+//float gfVV2XDcLinkCmdKCal			= 1.54166667f;
+//float gfVV2XDcLinkRefMaxCal			= 720.0f;
+//float gfVV2XDcLinkRefMinCal			= 370.0f;
+//float gfV2XDcLinkVoltPIKpCal		= 2.0f * PI2 * 10.0f * DefPFCLinkCap;	
+//float gfV2XDcLinkVoltPIKiCal		= POW2(PI2 * 10.0f) * DefPFCLinkCap;
+//float gfV2XDcLinkVoltPIKpMinCal		= 2.0f * PI2 * 10.0f * DefPFCLinkCap * 10.0f;
+//float gfV2XDcLinkVoltPIKiMinCal		= POW2(PI2 * 10.0f) * DefPFCLinkCap * 10.0f;
+//float gfV2XDcLinkVoltPIOutMax		= 3600.0f*1.3f;
+//float gfV2XDcLinkVoltPIOutMin		= 0.0f;
+//float gffV2XDcLinkVoltLpfCal		= 80.0f;
+//float gfDrV2XDcLinkVoltBsfCal		= 0.25;
+//float gfVV2XDcLinkCmdRateLimitCal	= 40.0f;
+//float gfVV2XDcLinkCmdMinCal			= 440.0f;
+//float gfVV2XDcLinkSSGainCal			= 0.9f;
+////Uint16 giVV2XDcDcSoftStart_TimerCal		= 100U;
+//Uint16 giVV2XDcDcSoftStart_TimerCal	= 5U;
+//
+////DCDC Curr Ctr
+//float gfIDcDcCtrKpCal				= 1/500.0f;
+//float gfIDcDcCtrKiCal				= PI2*1000.0f/500.0f;
+//float gfIDcDcCtrKaCal				= 500.0f;
+//
+//float gfIDcDcOutCtrTbCntFFCal		= 0.0f;
+//float gfIDcDcOutCtrTbCntCal			= 1666.f;
+//float gfDcDcSrPwmOnCurrCal			= 6.f;
+//float gfDcDcSrPwmOffCurrCal			= 4.f;
+//
+//float gfxDataRoCal[9] = { 10.43f,	13.04f,	17.39f,	20.87f,	26.09f,	34.78f,	52.17f,	104.35f,	1043.48f };
+//float gfyDataNormalVCal[6] = { 0.736842f, 	 0.815789f, 	 0.894737f, 	 0.973684f, 	 1.052632f, 	 1.131579f};
+//float gf2DtableDataCurrCtrOutCal[6][9] =
+//{
+//	{1.1183f,	1.1183f,	1.1183f,	1.1183f,	1.1183f,	1.1183f,	1.1076f,	1.0788f,	1.0441f},
+//	{0.9914f,	0.9914f,	0.9914f,	0.9914f,	0.9914f,	0.9877f,	0.9815f,	0.9636f,	0.9444f},
+//	{0.8583f,	0.8583f,	0.8583f,	0.8583f,	0.8579f,	0.8557f,	0.8532f,	0.8471f,	0.8353f},
+//	{0.7308f,	0.7308f,	0.7246f,	0.7238f,	0.7238f,	0.7237f,	0.7236f,	0.7235f,	0.7128f},
+//	{0.6472f,	0.6423f,	0.6359f,	0.6314f,	0.6264f,	0.6203f,	0.6109f,	0.5988f,	0.5661f},
+//	{0.6218f,	0.6121f,	0.5988f,	0.5899f,	0.5772f,	0.5616f,	0.5376f,	0.4944f,	0.3732f}
+//};
+//
+//Uint8 gixDataCurrCtrFFNumCal = 9U;
+//Uint8 giyDataCurrCtrFFNumCal = 6U;
+
+
+/*============================================================================
+	Private Variables/Constants
+============================================================================*/
+
+/*============================================================================
+	Function Prototypes
+============================================================================*/
+
+/*============================================================================
+	Function Implementations
+============================================================================*/
