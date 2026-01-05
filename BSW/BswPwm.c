@@ -10,6 +10,7 @@
 ============================================================================*/
 #include "F28x_Project.h"
 #include "BswPwm.h"
+#include "BswApi.h"
 #include "BswCal.h"
 /*============================================================================
     Macros
@@ -41,8 +42,6 @@ volatile struct EPWM_REGS *ePWM_Regs[] = {
         &EPwm12Regs
 };
 
-float gfPwmFreq = 0.;
-float gfduty_test = 0.;
 
 
 /*============================================================================
@@ -83,8 +82,8 @@ void InitEPwm1Config()
 
     EPwm1Regs.CMPCTL.bit.SHDWAMODE          = CC_SHADOW;            // Load registers every ZERO
     EPwm1Regs.CMPCTL.bit.SHDWBMODE          = CC_SHADOW;
-    EPwm1Regs.CMPCTL.bit.LOADAMODE          = CC_CTR_PRD;
-    EPwm1Regs.CMPCTL.bit.LOADBMODE          = CC_CTR_PRD;
+    EPwm1Regs.CMPCTL.bit.LOADAMODE          = CC_CTR_ZERO;
+    EPwm1Regs.CMPCTL.bit.LOADBMODE          = CC_CTR_ZERO;
 
     //Initialize
     EPwm1Regs.CMPA.bit.CMPA                 = 0;
@@ -362,6 +361,7 @@ void BswPwm_SetDeadtime (Uint8 ch, float Deadtime_ns )
 
 void BswPwm_SetFreq (Uint8 ch, Uint8 CarrMode, float Freq )
 {
+    EALLOW;
     ePWM_Regs[ ch ]->TBCTL.bit.CTRMODE             = CarrMode;
     if(CarrMode == TB_COUNT_UPDOWN)
     {
@@ -371,11 +371,18 @@ void BswPwm_SetFreq (Uint8 ch, Uint8 CarrMode, float Freq )
     {
         ePWM_Regs[ ch ]->TBPRD                     = ( Uint32 ) ( ( float ) CPUCLK / Freq );
     }
+    EDIS;
+
+    BswApi_ChangeISRTS(ISRPWMEVTNUM, Freq);
 }
 
 void BswPwm_SetFreqUpCnt (Uint8 ch, float Freq )
 {
+    EALLOW;
     ePWM_Regs[ ch ]->TBPRD                     = ( Uint32 ) ( ( float ) CPUCLK / Freq );
+    EDIS;
+
+    BswApi_ChangeISRTS(ISRPWMEVTNUM, Freq);
 }
 
 void BswPwm_SetFreqUpDownCnt (Uint8 ch, float Freq )
@@ -383,6 +390,8 @@ void BswPwm_SetFreqUpDownCnt (Uint8 ch, float Freq )
     EALLOW;
     ePWM_Regs[ ch ]->TBPRD                     =  (((( Uint32 )(( float ) CPUCLK / Freq))>>2)<<1);
     EDIS;
+
+    BswApi_ChangeISRTS(ISRPWMEVTNUM, Freq);
 }
 
 void BswPwm_InitFltPWM(Uint8 ch)
@@ -436,15 +445,12 @@ void BswPwm_DisablePfcHSPwm()
 {
     BswPwm_ForceLowPwm(1);
 
-    EALLOW;
-//    EPwm1Regs.CMPCTL.bit.SHDWAMODE = CC_IMMEDIATE;
-    EPwm1Regs.DBCTL.bit.OUT_MODE = DB_DISABLE;
-//    EPwm1Regs.AQCSFRC.bit.CSFA = 1;
-//    EPwm1Regs.AQCSFRC.bit.CSFB = 1;
-    EDIS;
-
-    BswPwm_SetPwmADuty(1, 0.f);
-    BswPwm_SetPwmBDuty(1, 1.f);
+//    EALLOW;
+//    EPwm1Regs.DBCTL.bit.OUT_MODE = DB_DISABLE;
+//    EDIS;
+//
+//    BswPwm_SetPwmADuty(1, 0.f);
+//    BswPwm_SetPwmBDuty(1, 1.f);
 }
 
 void BswPwm_EnablePwm (Uint8 ch)

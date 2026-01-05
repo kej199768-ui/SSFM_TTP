@@ -40,6 +40,7 @@ float MonApi_GetSmpsVolt(void);
 float MonApi_GetIgVolt(void);
 float MonApi_GetTemp(Uint16 SnsrNum);
 float MonApi_GetTempMax(void);
+float MonApi_GetISRTS(void);
 
 float MonApi_GetCurrAdcResult(Uint16 SnsrNum);
 float MonApi_GetVoltAdcResult(Uint16 SnsrNum);
@@ -72,6 +73,7 @@ float MonApi_GetIccuOutPwr(void);
 Uint16 MonApi_GetInhibitstate(void);
 #endif
 
+void MonApi_CalIsrCtr(void);
 void MonApi_AdcIsrCtr(void);
 void MonApi_AdcTask100us(void);
 void MonApi_AdcTask1ms(void);

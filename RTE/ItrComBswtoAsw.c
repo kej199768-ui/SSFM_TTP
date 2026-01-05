@@ -72,10 +72,16 @@ float ItrCom_GetVoltRaw(Uint8 SnsrNum)                  { return BswApi_GetVoltR
 //float ItrCom_GetVObcOutRefCalSimul()                    { return gfVObcOutRefCalSimul;}
 //float ItrCom_GetVLdcOutRefCalSimul()                    { return gfVObcOutRefCalSimul; }
 
+float ItrCom_GetISRTS()                                 { return BswApi_GetISRTS(); }
+
 //void ItrCom_SetPwmPhase(Uint8 ch, float NomalizedPhase)         { BswApi_SetPwmPhase(ch, NomalizedPhase); }
 void ItrCom_SetPfcPwmduty(Uint8 ch, Bool Deadband, float Duty)    { BswApi_SetPwmDuty(ch, Deadband, Duty); }
 void ItrCom_SetPfcPwmADuty(Uint8 ch, float Duty)                 { BswApi_SetPwmADuty(ch, Duty); }
 void ItrCom_SetPfcPwmBDuty(Uint8 ch, float Duty)                 { BswApi_SetPwmBDuty(ch, Duty); }
+
+void ItrCom_SetPfcPwmFreq(Uint8 ch, Uint8 CarrMode, float Freq) { BswApi_SetPwmFreq(ch, CarrMode, Freq); }
+void ItrCom_SetPfcFreqUpCnt(Uint8 ch, float Freq)               { BswApi_SetPwmFreqUpCnt(ch, Freq); }
+void ItrCom_SetPfcFreqUpDownCnt(Uint8 ch, float Freq)           { BswApi_SetPwmFreqUpDownCnt(ch, Freq); }
 
 void ItrCom_EnablePfcPWM()                                      { BswApi_EnablePfcPwm(); }
 void ItrCom_EnablePfcHSPWM()                                    { BswApi_EnablePfcHSPwm(); }
@@ -95,6 +101,10 @@ float ItrCom_GetTestInhibit()                           { return giInhibit; }
 
 void ItrCom_EnablePfcRly()                              { BswApi_EnablePfcRly(); }
 void ItrCom_DisablePfcRly()                             { BswApi_DisablePfcRly(); }
+void ItrCom_Gpio43En()                                  { BswApi_Gpio43En(); }
+void ItrCom_Gpio43Dis()                                 { BswApi_Gpio43Dis(); }
+void ItrCom_Gpio44En()                                  { BswApi_Gpio44En(); }
+void ItrCom_Gpio44Dis()                                 { BswApi_Gpio44Dis(); }
 
 void ItrCom_PfcLSSw_PosEn()                             { BswApi_PfcLSSw_PosEn(); }
 void ItrCom_PfcLSSw_NegEn()                             { BswApi_PfcLSSw_NegEn(); }

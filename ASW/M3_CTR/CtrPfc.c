@@ -15,7 +15,8 @@
 /*============================================================================
 	Macros
 ============================================================================*/
-
+#define CNTUP 1
+#define CNTDOWN 0
 /*============================================================================
 	Enumerations
 ============================================================================*/
@@ -113,8 +114,12 @@ Uint16 giController_inhibit = 0;
 Uint16 giTest_type = 0;    //DC - 1, AC - 0
 float  gfIin_ref_test = 0.;
 
-
-
+//SSFM Parameters
+float gfPfcFreq = 0.f;                  //PFC Switching frequency
+float gfFMFreqCenter = 63e3;            //Modulation Center frequency
+float gfFMFreqDelta = 20e3;             //Modulation frequency Min-Max Delta
+float gfFMModulationFreq = 10e3;        //Modulation duration(frequency)
+Uint8 Flag_CntFMDir = 0U;
 
 /*============================================================================
 	Private Variables/Constants
@@ -132,6 +137,8 @@ void CtrPfcCurrCtr(void);
 void CtrPfcPwmTest(void);
 void CtrDisPwm(void);
 
+void CtrPfcSsfmTriModulation(float fc, float df, float mf);     // Triangular Frequency Modulation
+
 /*============================================================================
 	Function Implementations
 ============================================================================*/
@@ -142,6 +149,7 @@ void CtrPfcIsrCtr(void) {
 	    if (giIController_inhibit == 1 || giController_inhibit == 1)
 	    {
 	        CtrPfcCurrCtr();
+//	        CtrPfcSsfmTriModulation(gfFMFreqCenter, gfFMFreqDelta, gfFMModulationFreq);
 	    }
 	    else if (giPwmTest_inhibit == 1)
 	    {
@@ -345,6 +353,22 @@ void CtrPfcHalfCycleDet(void)
         giFlag_LSSW_Deadzone = FALSE;
         giFlag_HSSW_Deadzone = FALSE;
     }
+
+    if (giflag_PosCycle == TRUE && giflag_NegCycle == FALSE && giFlag_LSSW_Deadzone == FALSE)
+    {
+        ItrCom_Gpio43En();
+        ItrCom_Gpio44Dis();
+    }
+    else if (giflag_NegCycle == TRUE && giflag_PosCycle == FALSE && giFlag_LSSW_Deadzone == FALSE)
+    {
+        ItrCom_Gpio43Dis();
+        ItrCom_Gpio44En();
+    }
+    else
+    {
+        ItrCom_Gpio43Dis();
+        ItrCom_Gpio44Dis();
+    }
 }
 
 
@@ -488,7 +512,8 @@ void CtrPfcCurrCtr()
 	fVPfcDcLink = LIMIT_MIN(fVPfcDcLink, 100.0f);
 
 	float fVGrid = MonApi_GetVolt(VoltSnsrGrid);
-	float Ts_ILCtr = ISRTS;
+//	float Ts_ILCtr = 1.429e-5f;
+	float Ts_ILCtr = MonApi_GetISRTS();
 	float fIPfcL[CurrPfcSnsrNum] = { 0.0f, };
 	float fVGrid_Rms = 0;
 	if (giTest_type == 0)       { fVGrid_Rms = gfVGrid_Mag_LPF * INVSqrt2; }  //AC
@@ -616,6 +641,7 @@ void CtrPfcCurrCtr()
 				
 				PI_Control_calc(&gPiIPfcL[CurrSnsrPhase]);
 
+				CtrPfcSsfmTriModulation(gfFMFreqCenter, gfFMFreqDelta, gfFMModulationFreq);
 				ItrCom_SetPfcPwmduty(1, TRUE, gPiIPfcL[CurrSnsrPhase].out);
 				giFlag_IPfcLCtrlCpl = TRUE;
 
@@ -653,6 +679,7 @@ void CtrPfcCurrCtr()
 				
 				PI_Control_calc(&gPiIPfcL[CurrSnsrPhase]);
 
+				CtrPfcSsfmTriModulation(gfFMFreqCenter, gfFMFreqDelta, gfFMModulationFreq);
 				ItrCom_SetPfcPwmduty(1, TRUE, gPiIPfcL[CurrSnsrPhase].out);
 				
 				giFlag_IPfcLCtrlCpl = TRUE;
@@ -683,6 +710,38 @@ void CtrPfcCurrCtr()
 	default:
 		break;
 	}
+}
+
+/*----------------------------------------------------------------------------
+    Func : PFC PWM Frequency Modulation / Periodic Triangular
+    Period : ISR
+    Parameter : gfFs
+----------------------------------------------------------------------------*/
+void CtrPfcSsfmTriModulation(float fc, float df, float mf)
+{
+    float Tm = 1.f / mf;
+    float fmax = fc + (0.5f * df);
+    float fmin = fc - (0.5f * df);
+    float Ts_Sfm = ItrCom_GetISRTS();
+
+    Uint16 UNcount_FM = (Uint16)(Tm / Ts_Sfm / 2);
+    float fPfc_Freqintv = df / UNcount_FM;
+
+    if (gfPfcFreq <= fmin)
+    {
+        gfPfcFreq = fmin;
+        Flag_CntFMDir = CNTUP;
+    }
+    else if (gfPfcFreq >= fmax)
+    {
+        gfPfcFreq = fmax;
+        Flag_CntFMDir = CNTDOWN;
+    }
+
+    if (Flag_CntFMDir == CNTUP) { gfPfcFreq += fPfc_Freqintv; }
+    else if (Flag_CntFMDir == CNTDOWN) { gfPfcFreq -= fPfc_Freqintv; }
+
+    ItrCom_SetPfcFreqUpDownCnt(1, gfPfcFreq);
 }
 
 /*----------------------------------------------------------------------------

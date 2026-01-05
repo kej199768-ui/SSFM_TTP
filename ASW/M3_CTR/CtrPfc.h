@@ -46,6 +46,10 @@ extern Uint16 giController_inhibit;
 extern Uint16 giTest_type;
 extern float  gfIin_ref_test;
 
+extern float gfFMFreqCenter;
+extern float gfFMFreqDelta;
+extern float gfFMModulationFreq;
+
 /*============================================================================
 	Function Prototypes
 ============================================================================*/

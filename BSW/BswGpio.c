@@ -172,6 +172,22 @@ void InitGpioInOutConfig()
     GpioDataRegs.GPBCLEAR.bit.GPIO39  = 1;    // GPIO39 clear
 
     //===========================================================================
+    //GPIO43, Check signal
+    //===========================================================================
+    GpioCtrlRegs.GPBPUD.bit.GPIO43  = 0;    // Enable pullup
+    GpioCtrlRegs.GPBMUX1.bit.GPIO43 = 0;    // GPIO
+    GpioCtrlRegs.GPBDIR.bit.GPIO43  = 1;    // Output
+    GpioDataRegs.GPBCLEAR.bit.GPIO43  = 1;    // GPIO43 clear
+
+    //===========================================================================
+    //GPIO44, Check signal
+    //===========================================================================
+    GpioCtrlRegs.GPBPUD.bit.GPIO44  = 0;    // Enable pullup
+    GpioCtrlRegs.GPBMUX1.bit.GPIO44 = 0;    // GPIO
+    GpioCtrlRegs.GPBDIR.bit.GPIO44  = 1;    // Output
+    GpioDataRegs.GPBCLEAR.bit.GPIO44  = 1;    // GPIO44 clear
+
+    //===========================================================================
     
     EDIS;
 }
@@ -201,6 +217,22 @@ void BswGpio_PfcLSSw_DeadBand()
     GpioDataRegs.GPBCLEAR.bit.GPIO39 = 1;
 }
 
+void BswGpio_Gpio43En()
+{
+    GpioDataRegs.GPBSET.bit.GPIO43 = 1;
+}
+void BswGpio_Gpio43Dis()
+{
+    GpioDataRegs.GPBCLEAR.bit.GPIO43 = 1;
+}
+void BswGpio_Gpio44En()
+{
+    GpioDataRegs.GPBSET.bit.GPIO44 = 1;
+}
+void BswGpio_Gpio44Dis()
+{
+    GpioDataRegs.GPBCLEAR.bit.GPIO44 = 1;
+}
 
 
 #if 0

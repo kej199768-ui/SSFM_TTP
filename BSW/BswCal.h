@@ -47,6 +47,8 @@ extern float gfPfcCurrOffsetCal;
 extern float gfPfcInVoltOffsetCal;
 extern float gfPfcOutVoltOffsetCal;
 
+extern float gfISRTScal;
+
 /*============================================================================
     Private Variables/Constants
 ============================================================================*/
@@ -54,7 +56,7 @@ extern float gfPfcOutVoltOffsetCal;
 /*============================================================================
     Function Prototypes
 ============================================================================*/
-
+void BswCal_ChangeIsrTs(float EvtNum, float Freq);
 
 
 #endif /* BSW_BSWCAL_H_ */

@@ -47,6 +47,11 @@ void BswGpio_PfcLSSw_PosEn(void);
 void BswGpio_PfcLSSw_NegEn(void);
 void BswGpio_PfcLSSw_DeadBand(void);
 
+void BswGpio_Gpio43En(void);
+void BswGpio_Gpio43Dis(void);
+void BswGpio_Gpio44En(void);
+void BswGpio_Gpio44Dis(void);
+
 #if 0
 void InitHWFltGpioConfig(void);
 void InitComGpioConfig(void);

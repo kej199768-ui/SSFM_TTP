@@ -130,7 +130,7 @@
 #define PWMTS               1.429e-5f
 #define ISRPWMEVTNUM        1//4
 #define ISRFREQ             PWMFREQ/ISRPWMEVTNUM
-#define ISRTS               PWMTS*ISRPWMEVTNUM
+//#define ISRTS               PWMTS*ISRPWMEVTNUM
 
 /*============================================================================
     Enumerations

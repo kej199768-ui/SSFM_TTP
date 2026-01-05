@@ -12,6 +12,7 @@
 #include "MonApi.h"
 #include "MonAdc.h"
 #include "MonPwr.h"
+#include "MonCal.h"
 
 /*============================================================================
     Macros
@@ -48,6 +49,7 @@ float MonApi_GetSmpsVolt(void)                  { return gfVSmps; }
 float MonApi_GetIgVolt(void)                    { return gfVig; }
 float MonApi_GetTemp(Uint16 SnsrNum)            { return gfTemp[SnsrNum]; }
 float MonApi_GetTempMax(void)                   { return gfTempMax; }
+float MonApi_GetISRTS(void)                     { return gfISRTS; }
 
 float MonApi_GetCurrAdcResult(Uint16 SnsrNum)   {return gfIIccuAdcResult[SnsrNum]; }
 float MonApi_GetVoltAdcResult(Uint16 SnsrNum)   {return gfVIccuAdcResult[SnsrNum]; }
@@ -84,6 +86,7 @@ Uint16 MonApi_GetInhibitstate()                 { return giInhibitTest; }
 #endif
 #endif
 
+void MonApi_CalIsrCtr(void)                     { MonCalIsrCtr(); }
 void MonApi_AdcIsrCtr(void)                     { MonAdcIsrCtr(); }
 void MonApi_AdcTask100us(void)                  { MonAdcTask100us(); }
 void MonApi_AdcTask1ms(void)

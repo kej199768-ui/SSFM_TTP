@@ -25,7 +25,7 @@ Uint16 giVPfcSoftStart_TimerCal = 100U;		//100 * 1ms
 //(KEJ) PLL PI
 float gfGridPLLKpCal				= 2.0f * PI2 * DeffBWGridPLL;
 float gfGridPLLKiCal				= POW2( PI2 * DeffBWGridPLL);
-float gfGridPLLFF					= 60.0f * PI2;
+float gfGridPLLFF					= 50.0f * PI2;
 //float gfGridPLLKpCal = 2.0f * 0.707f * DeffBWGridPLL / 300.0f;
 //float gfGridPLLKiCal = DeffBWGridPLL * DeffBWGridPLL / 300.0f;
 //float gfGridPLLFF = 60.0f * PI2;
@@ -42,7 +42,7 @@ float gfVPfcDcLinkRefMinCal			= 370.0f;
 float gfDrPfcDcLinkVoltBsf			= 2.0f;
 
 //(KEJ) PFC DcLinkV Err Rate limiter
-float gfVPfcDcLinkCmdRateLimitCal = 1.0f;
+float gfVPfcDcLinkCmdRateLimitCal = 0.1f;
 
 //(KEJ) PFC Curr PI
 //float gfPfcCurrPIKpCal				= 2.0f * PI2 * DeffBWPFCCurr * DefPFCBoostL * 0.5f;

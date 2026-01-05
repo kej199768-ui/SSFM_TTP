@@ -58,6 +58,7 @@
 ============================================================================*/
 void AswIsrCtr(void)
 {
+    MonApi_CalIsrCtr();
 	MonApi_AdcIsrCtr();             //ADC sensing
     CtrApi_CtrMIsrCtr();
     FdiagApi_ChkMIsrCtr();

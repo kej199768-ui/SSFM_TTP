@@ -41,10 +41,12 @@ extern Uint16 gf1dTempDataCntCal;
 extern float gfxDataVntcCal[8];
 extern float  gfyDataTempCal[8];
 
+extern float gfISRTS;
+
 /*============================================================================
     Function Prototypes
 ============================================================================*/
-
+void MonCalIsrCtr(void);
 
 
 #endif /* ASW_M2_MON_MONCAL_H_ */

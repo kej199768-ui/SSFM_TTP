@@ -41,9 +41,16 @@ float BswApi_GetVolt(Uint8 SnsrNum);
 float BswApi_GetCurrRaw(Uint8 SnsrNum);
 float BswApi_GetVoltRaw(Uint8 SnsrNum);
 
+float BswApi_GetISRTS();
+void BswApi_ChangeISRTS(float EvtNum, float Freq);
+
 void BswApi_SetPwmDuty(Uint8 ch, Bool Deadband, float Duty);
 void BswApi_SetPwmADuty(Uint8 ch, float Duty);
 void BswApi_SetPwmBDuty(Uint8 ch, float Duty);
+
+void BswApi_SetPwmFreq(Uint8 ch, Uint8 CarrMode, float Freq);
+void BswApi_SetPwmFreqUpCnt(Uint8 ch, float Freq);
+void BswApi_SetPwmFreqUpDownCnt(Uint8 ch, float Freq);
 
 void BswApi_EnablePfcPwm();
 void BswApi_EnablePfcHSPwm();
@@ -56,6 +63,10 @@ Uint8 BswApi_GetPwmEvtNum(Uint8 ch);
 
 void BswApi_EnablePfcRly();
 void BswApi_DisablePfcRly();
+void BswApi_Gpio43En();
+void BswApi_Gpio43Dis();
+void BswApi_Gpio44En();
+void BswApi_Gpio44Dis();
 
 void BswApi_PfcLSSw_PosEn();
 void BswApi_PfcLSSw_NegEn();

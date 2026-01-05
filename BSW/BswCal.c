@@ -40,9 +40,11 @@ float gfPfcOutVoltOffsetCal     = 0.0f;
 
 float gfPwmFreqInitCal      = PWMFREQ;
 Uint16 giAdcOffsetCalCntCal = (Uint16)(ISRFREQ);
-float gfIsrTsInitCal        = ISRTS;
+//float gfIsrTsInitCal        = ISRTS;
 Uint16 giDeadBandCal        = 20;       //1clock 5ns
 Uint16 giDeadBandSrCal      = 20;
+
+float gfISRTScal               = 1.f / PWMFREQ;
 
 
 /*============================================================================
@@ -56,5 +58,8 @@ Uint16 giDeadBandSrCal      = 20;
 /*============================================================================
     Function Implementations
 ============================================================================*/
-
+void BswCal_ChangeIsrTs(float EvtNum, float Freq)
+{
+    gfISRTScal = EvtNum / Freq;
+}
 

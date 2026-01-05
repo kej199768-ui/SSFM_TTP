@@ -51,6 +51,8 @@ extern float gfPfcCurrPIKiMaxCal;
 extern float gfPfcCurrPIOutMax;
 extern float gfPfcCurrPIOutMin;
 
+extern float gfISRTS;
+
 //extern float gfGridPLLKpCal;
 //extern float gfGridPLLKiCal;
 //extern float gfGridPLLFF;
