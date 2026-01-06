@@ -48,7 +48,8 @@ extern float  gfIin_ref_test;
 
 extern float gfFMFreqCenter;
 extern float gfFMFreqDelta;
-extern float gfFMModulationFreq;
+extern float gfFMModulationFreq_Slow;
+extern float gfFMModulationFreq_Fast;
 
 /*============================================================================
 	Function Prototypes

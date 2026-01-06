@@ -24,7 +24,14 @@
 /*============================================================================
 	Data Structures
 ============================================================================*/
-
+typedef struct {
+    float fc;
+    float df;
+    float mf;
+    float freq;
+    float Cnt;
+}FM_Tri;
+#define FM_Tri_defaults { 0.f,0.f,0.f,0.f,0.f }
 /*============================================================================
 	Global variables
 ============================================================================*/
@@ -115,10 +122,13 @@ Uint16 giTest_type = 0;    //DC - 1, AC - 0
 float  gfIin_ref_test = 0.;
 
 //SSFM Parameters
+FM_Tri gFmTriFast = FM_Tri_defaults;
+FM_Tri gFmTriSlow = FM_Tri_defaults;
 float gfPfcFreq = 0.f;                  //PFC Switching frequency
 float gfFMFreqCenter = 63e3;            //Modulation Center frequency
 float gfFMFreqDelta = 20e3;             //Modulation frequency Min-Max Delta
-float gfFMModulationFreq = 10e3;        //Modulation duration(frequency)
+float gfFMModulationFreq_Slow = 200;        //Modulation duration(frequency)
+float gfFMModulationFreq_Fast = 10e3;
 Uint8 Flag_CntFMDir = 0U;
 
 /*============================================================================
@@ -137,7 +147,8 @@ void CtrPfcCurrCtr(void);
 void CtrPfcPwmTest(void);
 void CtrDisPwm(void);
 
-void CtrPfcSsfmTriModulation(float fc, float df, float mf);     // Triangular Frequency Modulation
+void CtrPfcSsfmPrps(Uint8 order);
+void CtrPfcFmTriModulation(FM_Tri* in);                         // Triangular Frequency Modulation
 
 /*============================================================================
 	Function Implementations
@@ -641,7 +652,7 @@ void CtrPfcCurrCtr()
 				
 				PI_Control_calc(&gPiIPfcL[CurrSnsrPhase]);
 
-				CtrPfcSsfmTriModulation(gfFMFreqCenter, gfFMFreqDelta, gfFMModulationFreq);
+				CtrPfcSsfmPrps(3);
 				ItrCom_SetPfcPwmduty(1, TRUE, gPiIPfcL[CurrSnsrPhase].out);
 				giFlag_IPfcLCtrlCpl = TRUE;
 
@@ -679,7 +690,7 @@ void CtrPfcCurrCtr()
 				
 				PI_Control_calc(&gPiIPfcL[CurrSnsrPhase]);
 
-				CtrPfcSsfmTriModulation(gfFMFreqCenter, gfFMFreqDelta, gfFMModulationFreq);
+				CtrPfcSsfmPrps(3);
 				ItrCom_SetPfcPwmduty(1, TRUE, gPiIPfcL[CurrSnsrPhase].out);
 				
 				giFlag_IPfcLCtrlCpl = TRUE;
@@ -713,35 +724,65 @@ void CtrPfcCurrCtr()
 }
 
 /*----------------------------------------------------------------------------
+    Func : PFC PWM Frequency Modulation
+    Period : ISR
+    Parameter : gfFs
+----------------------------------------------------------------------------*/
+void CtrPfcSsfmPrps(Uint8 order)
+{
+    float fVAcVolt = MonApi_GetVolt(VoltSnsrGrid);
+    float fVDcLinkVolt = MonApi_GetVolt(VoltSnsrDCLink);
+
+    float factor = 2 * order * PI * fVAcVolt / fVDcLinkVolt;
+
+    gFmTriFast.fc = gfFMFreqCenter;
+    gFmTriFast.df = gfFMFreqDelta;
+    gFmTriFast.mf = gfFMModulationFreq_Fast;
+    gFmTriSlow.fc = gfFMFreqCenter;
+    gFmTriSlow.df = gfFMFreqDelta;
+    gFmTriSlow.mf = gfFMModulationFreq_Slow;
+
+    if ((factor >= (11*PI/6)) || (factor <= (PI/6)))
+    {
+        CtrPfcFmTriModulation(&gFmTriFast);
+    }
+    else
+    {
+        CtrPfcFmTriModulation(&gFmTriSlow);
+    }
+
+}
+
+/*----------------------------------------------------------------------------
     Func : PFC PWM Frequency Modulation / Periodic Triangular
     Period : ISR
     Parameter : gfFs
 ----------------------------------------------------------------------------*/
-void CtrPfcSsfmTriModulation(float fc, float df, float mf)
+void CtrPfcFmTriModulation(FM_Tri* in)
 {
-    float Tm = 1.f / mf;
-    float fmax = fc + (0.5f * df);
-    float fmin = fc - (0.5f * df);
+    float Tm = 1.f / in->mf;
+    float fmax = in->fc + (0.5f * in->df);
+    float fmin = in->fc - (0.5f * in->df);
     float Ts_Sfm = ItrCom_GetISRTS();
 
     Uint16 UNcount_FM = (Uint16)(Tm / Ts_Sfm / 2);
-    float fPfc_Freqintv = df / UNcount_FM;
+    float fPfc_Freqintv = in->df / UNcount_FM;
 
-    if (gfPfcFreq <= fmin)
+    if (in->freq <= fmin)
     {
-        gfPfcFreq = fmin;
-        Flag_CntFMDir = CNTUP;
+        in->freq = fmin;
+        in->Cnt = CNTUP;
     }
-    else if (gfPfcFreq >= fmax)
+    else if (in->freq >= fmax)
     {
-        gfPfcFreq = fmax;
-        Flag_CntFMDir = CNTDOWN;
+        in->freq = fmax;
+        in->Cnt = CNTDOWN;
     }
 
-    if (Flag_CntFMDir == CNTUP) { gfPfcFreq += fPfc_Freqintv; }
-    else if (Flag_CntFMDir == CNTDOWN) { gfPfcFreq -= fPfc_Freqintv; }
+    if (in->Cnt == CNTUP) { in->freq += fPfc_Freqintv; }
+    else if (in->Cnt == CNTDOWN) { in->freq -= fPfc_Freqintv; }
 
-    ItrCom_SetPfcFreqUpDownCnt(1, gfPfcFreq);
+    ItrCom_SetPfcFreqUpDownCnt(1, in->freq);
 }
 
 /*----------------------------------------------------------------------------
