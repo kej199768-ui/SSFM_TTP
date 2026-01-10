@@ -46,7 +46,7 @@
 
 #include "inc/hw_memmap.h"
 
-#include "adc.h"
+#include "driverlib/adc.h"
 #include "asysctl.h"
 #include "bgcrc.h"
 #include "can.h"

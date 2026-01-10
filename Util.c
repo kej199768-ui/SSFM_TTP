@@ -3,6 +3,9 @@
  *
  *  Created on: 2023. 1. 3.
  *      Author: poweryhs
+ *  Updated on: 2026. 1. 10.
+ *      Author: Kim Eunji
+ *      Change: Add Random number generator function
  */
 
 #include "Common.h"
