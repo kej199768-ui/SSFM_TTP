@@ -667,6 +667,7 @@ void CtrPfcCurrCtr()
 				    gFMTriNom.df = gfFMFreqDelta;
 				    gFMTriNom.mf = gfFMModulationFreq_Nom;
 				    CtrPfcFmTriModulation(&gFMTriNom);
+				    gfPfcFreq = gFMTriNom.freq;
 				}
 				else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 1U && giRandomSSFM_inhibit == 0U)
 				{
@@ -767,10 +768,13 @@ void CtrPfcCurrCtr()
 ----------------------------------------------------------------------------*/
 void CtrPfcSsfmPrps(Uint8 order)
 {
-    float fVAcVolt = MonApi_GetVolt(VoltSnsrGrid);
-    float fVDcLinkVolt = MonApi_GetVolt(VoltSnsrDCLink);
+//    float fVAcVolt = MonApi_GetVolt(VoltSnsrGrid);
+//    float fVDcLinkVolt = MonApi_GetVolt(VoltSnsrDCLink);
+    float fVAcVolt = MonApi_GetVoltSwLpf(VoltSnsrGrid);
+    float fVDcLinkVolt = MonApi_GetVoltSwLpf(VoltSnsrDCLink);
 
-    float factor = 2 * order * PI * fVAcVolt / fVDcLinkVolt;
+//    float factor = 2 * order * PI * fVAcVolt / fVDcLinkVolt;
+    float factor = cosf(2 * order * PI * fVAcVolt / fVDcLinkVolt);
 
     gFmTriFast.fc = gfFMFreqCenter;
     gFmTriFast.df = gfFMFreqDelta;
@@ -779,13 +783,26 @@ void CtrPfcSsfmPrps(Uint8 order)
     gFmTriSlow.df = gfFMFreqDelta;
     gFmTriSlow.mf = gfFMModulationFreq_Slow;
 
-    if ((factor >= (11*PI/6)) || (factor <= (PI/6)))
-    {
-        CtrPfcFmTriModulation(&gFmTriFast);
-    }
-    else
+//    if ((factor >= (11*PI/6)) || (factor <= (PI/6)))
+//    {
+//        CtrPfcFmTriModulation(&gFmTriFast);
+//    }
+//    else
+//    {
+//        CtrPfcFmTriModulation(&gFmTriSlow);
+//    }
+
+    if (factor >= -0.5)
     {
         CtrPfcFmTriModulation(&gFmTriSlow);
+        ItrCom_Gpio43En();
+        ItrCom_Gpio44Dis();
+    }
+    else if(factor < -0.5)
+    {
+        CtrPfcFmTriModulation(&gFmTriFast);
+        ItrCom_Gpio43Dis();
+        ItrCom_Gpio44En();
     }
 
 }
@@ -805,6 +822,9 @@ void CtrPfcFmTriModulation(FM_Tri* in)
     Uint16 UNcount_FM = (Uint16)(Tm / Ts_Sfm / 2);
     float fPfc_Freqintv = in->df / UNcount_FM;
 
+    if (in->Cnt == CNTUP) { in->freq += fPfc_Freqintv; }
+    else if (in->Cnt == CNTDOWN) { in->freq -= fPfc_Freqintv; }
+
     if (in->freq <= fmin)
     {
         in->freq = fmin;
@@ -816,10 +836,8 @@ void CtrPfcFmTriModulation(FM_Tri* in)
         in->Cnt = CNTDOWN;
     }
 
-    if (in->Cnt == CNTUP) { in->freq += fPfc_Freqintv; }
-    else if (in->Cnt == CNTDOWN) { in->freq -= fPfc_Freqintv; }
-
     ItrCom_SetPfcFreqUpDownCnt(1, in->freq);
+    gfPfcFreq = in->freq;
 }
 
 /*----------------------------------------------------------------------------
@@ -835,6 +853,7 @@ void CtrPfcFmRandomModulation(float fsw_center, float fsw_delta)
 
     fsw = GetRandom(fmax, fmin);
     ItrCom_SetPfcFreqUpDownCnt(1, fsw);
+    gfPfcFreq = fsw;
 }
 
 /*----------------------------------------------------------------------------
