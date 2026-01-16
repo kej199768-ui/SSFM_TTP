@@ -10,6 +10,7 @@
 
 #include "Common.h"
 #include "math.h"
+#include "stdlib.h"
 
 
  /*-----------------------------------------------------------------------------
@@ -270,5 +271,8 @@ extern float CPXTPTZF2(float Tsamp, float Kp, float Wp, float ZetaPole, float Wz
 float Interp1DCalc(float* x, float* y, Uint16 xsize, Uint16 ysize, float input);
 float Interp2DCalc(float* x, float* y, float* value, Uint16 xsize, Uint16 ysize, float xinput, float yinput);
 float Interp3DCalc(float* x, float* y, float* z, float* value, Uint16 xsize, Uint16 ysize, Uint16 zsize, float xinput, float yinput, float zinput);
+
+// Random
+extern float GetRandom(float Max, float Min);
 
 #endif /* UTIL_H_ */

@@ -120,16 +120,23 @@ Uint16 giIController_inhibit = 0;
 Uint16 giController_inhibit = 0;
 Uint16 giTest_type = 0;    //DC - 1, AC - 0
 float  gfIin_ref_test = 0.;
+Uint16 giNormalSSFM_inhibit = 0U;
+Uint16 giPrpsSSFM_inhibit = 0U;
+Uint16 giRandomSSFM_inhibit = 0U;
 
 //SSFM Parameters
+FM_Tri gFMTriNom = FM_Tri_defaults;
 FM_Tri gFmTriFast = FM_Tri_defaults;
 FM_Tri gFmTriSlow = FM_Tri_defaults;
 float gfPfcFreq = 0.f;                  //PFC Switching frequency
 float gfFMFreqCenter = 63e3;            //Modulation Center frequency
 float gfFMFreqDelta = 20e3;             //Modulation frequency Min-Max Delta
+float gfFMModulationFreq_Nom = 1e3;
 float gfFMModulationFreq_Slow = 200;        //Modulation duration(frequency)
 float gfFMModulationFreq_Fast = 10e3;
 Uint8 Flag_CntFMDir = 0U;
+
+extern float Testrandom = 0.f;
 
 /*============================================================================
 	Private Variables/Constants
@@ -149,6 +156,7 @@ void CtrDisPwm(void);
 
 void CtrPfcSsfmPrps(Uint8 order);
 void CtrPfcFmTriModulation(FM_Tri* in);                         // Triangular Frequency Modulation
+void CtrPfcFmRandomModulation(float fsw_center, float fsw_delta);
 
 /*============================================================================
 	Function Implementations
@@ -160,7 +168,6 @@ void CtrPfcIsrCtr(void) {
 	    if (giIController_inhibit == 1 || giController_inhibit == 1)
 	    {
 	        CtrPfcCurrCtr();
-//	        CtrPfcSsfmTriModulation(gfFMFreqCenter, gfFMFreqDelta, gfFMModulationFreq);
 	    }
 	    else if (giPwmTest_inhibit == 1)
 	    {
@@ -170,6 +177,8 @@ void CtrPfcIsrCtr(void) {
 	    {
 	        CtrDisPwm();
 	    }
+
+
 
 	}
 	else if (iIccuModeState == ICCUMODE_V2L)
@@ -365,21 +374,21 @@ void CtrPfcHalfCycleDet(void)
         giFlag_HSSW_Deadzone = FALSE;
     }
 
-    if (giflag_PosCycle == TRUE && giflag_NegCycle == FALSE && giFlag_LSSW_Deadzone == FALSE)
-    {
-        ItrCom_Gpio43En();
-        ItrCom_Gpio44Dis();
-    }
-    else if (giflag_NegCycle == TRUE && giflag_PosCycle == FALSE && giFlag_LSSW_Deadzone == FALSE)
-    {
-        ItrCom_Gpio43Dis();
-        ItrCom_Gpio44En();
-    }
-    else
-    {
-        ItrCom_Gpio43Dis();
-        ItrCom_Gpio44Dis();
-    }
+//    if (giflag_PosCycle == TRUE && giflag_NegCycle == FALSE && giFlag_LSSW_Deadzone == FALSE)
+//    {
+//        ItrCom_Gpio43En();
+//        ItrCom_Gpio44Dis();
+//    }
+//    else if (giflag_NegCycle == TRUE && giflag_PosCycle == FALSE && giFlag_LSSW_Deadzone == FALSE)
+//    {
+//        ItrCom_Gpio43Dis();
+//        ItrCom_Gpio44En();
+//    }
+//    else
+//    {
+//        ItrCom_Gpio43Dis();
+//        ItrCom_Gpio44Dis();
+//    }
 }
 
 
@@ -652,7 +661,21 @@ void CtrPfcCurrCtr()
 				
 				PI_Control_calc(&gPiIPfcL[CurrSnsrPhase]);
 
-				CtrPfcSsfmPrps(3);
+				if(giNormalSSFM_inhibit == 1U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 0U)
+				{
+				    gFMTriNom.fc = gfFMFreqCenter;
+				    gFMTriNom.df = gfFMFreqDelta;
+				    gFMTriNom.mf = gfFMModulationFreq_Nom;
+				    CtrPfcFmTriModulation(&gFMTriNom);
+				}
+				else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 1U && giRandomSSFM_inhibit == 0U)
+				{
+				    CtrPfcSsfmPrps(3);
+				}
+				else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 1U)
+				{
+	                CtrPfcFmRandomModulation(gfFMFreqCenter, gfFMFreqDelta);
+				}
 				ItrCom_SetPfcPwmduty(1, TRUE, gPiIPfcL[CurrSnsrPhase].out);
 				giFlag_IPfcLCtrlCpl = TRUE;
 
@@ -690,7 +713,21 @@ void CtrPfcCurrCtr()
 				
 				PI_Control_calc(&gPiIPfcL[CurrSnsrPhase]);
 
-				CtrPfcSsfmPrps(3);
+				if(giNormalSSFM_inhibit == 1U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 0U)
+                {
+                    gFMTriNom.fc = gfFMFreqCenter;
+                    gFMTriNom.df = gfFMFreqDelta;
+                    gFMTriNom.mf = gfFMModulationFreq_Nom;
+                    CtrPfcFmTriModulation(&gFMTriNom);
+                }
+                else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 1U && giRandomSSFM_inhibit == 0U)
+                {
+                    CtrPfcSsfmPrps(3);
+                }
+                else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 1U)
+                {
+                    CtrPfcFmRandomModulation(gfFMFreqCenter, gfFMFreqDelta);
+                }
 				ItrCom_SetPfcPwmduty(1, TRUE, gPiIPfcL[CurrSnsrPhase].out);
 				
 				giFlag_IPfcLCtrlCpl = TRUE;
@@ -783,6 +820,21 @@ void CtrPfcFmTriModulation(FM_Tri* in)
     else if (in->Cnt == CNTDOWN) { in->freq -= fPfc_Freqintv; }
 
     ItrCom_SetPfcFreqUpDownCnt(1, in->freq);
+}
+
+/*----------------------------------------------------------------------------
+    Func : PFC PWM Frequency Modulation / Random
+    Period : ISR
+    Parameter : gfFs
+----------------------------------------------------------------------------*/
+void CtrPfcFmRandomModulation(float fsw_center, float fsw_delta)
+{
+    float fsw = 0.f;
+    float fmin = fsw_center - 0.5 * fsw_delta;
+    float fmax = fsw_center + 0.5 * fsw_delta;
+
+    fsw = GetRandom(fmax, fmin);
+    ItrCom_SetPfcFreqUpDownCnt(1, fsw);
 }
 
 /*----------------------------------------------------------------------------
