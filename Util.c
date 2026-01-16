@@ -10,6 +10,7 @@
 
 #include "Common.h"
 #include "Util.h"
+#include "stdlib.h"
 
 
  /* line to line voltage transformation to Phase voltage*/
@@ -906,5 +907,15 @@ float Interp3DCalc(float* x, float* y, float* z, float* value, Uint16 xsize, Uin
 
         }
     }
+    return output;
+}
+
+float GetRandom(float Max, float Min)
+{
+    float output = 0.f;
+    float NomRandom = (float)rand() / (float)RAND_MAX;
+
+    output = (Max - Min) * NomRandom + Min;
+
     return output;
 }

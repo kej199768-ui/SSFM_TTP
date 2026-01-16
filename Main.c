@@ -100,12 +100,12 @@ void main(void)
          Step5. Enable interrupts
  ============================================================================*/
     //Enable Cpu Interrupt
-    IER |= M_INT1;                                          //INT1 (for ADCA1)
+    IER |= M_INT1;                                          //INT1 (for ADCB1)
     IER |= M_INT13;                                         //INT13 (for Timer1)
 
     //Enable ePWM INTn
     EALLOW;
-    PieCtrlRegs.PIEIER1.bit.INTx2 = 1;                      //ADCA1 INT
+    PieCtrlRegs.PIEIER1.bit.INTx2 = 1;                      //ADCB1 INT
     EDIS;
 
     //Initialize CPU Timer

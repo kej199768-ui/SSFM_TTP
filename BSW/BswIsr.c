@@ -33,6 +33,7 @@ Uint16 BswTask1msCnt    = 0;
 Uint16 BswTask10msCnt   = 0;
 Uint16 BswTask100msCnt  = 0;
 Uint32 CntCtrISR        = 0;
+Uint32 CntAdca          = 0;
 
 /*============================================================================
     Private Variables/Constants
@@ -55,8 +56,10 @@ __interrupt void adcb1_isr()
 
 //    DELAY_US(15);
 //    BswAdcIsrOffsetCalc();
+    BswApi_Gpio43En();
     BswAdcIsrCalc();
     ItrCom_AswIsrCtr();
+    BswApi_Gpio43Dis();
 
     AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //clear INT1 flag
     //
@@ -69,7 +72,6 @@ __interrupt void adcb1_isr()
     }
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
-
 
 __interrupt void Timer1_Task_100us_isr(void)
 {

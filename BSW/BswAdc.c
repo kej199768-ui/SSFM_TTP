@@ -42,6 +42,8 @@ float gfVoltCal[VOLTSNSRNUM] = {0.,};
 float gfCurrRaw[CURRSNSRNUM] = {0.,};
 float gfVoltRaw[VOLTSNSRNUM] = {0.,};
 
+Uint32 i = 0U;
+
 
 /*============================================================================
     Private Variables/Constants
@@ -123,11 +125,10 @@ void InitAdcConfig()
     AdcbRegs.ADCSOC5CTL.bit.ACQPS   = acqps;
     AdcbRegs.ADCSOC5CTL.bit.TRIGSEL = ADCTRIG6;
 
-
     /**********************************************************************
       ADC Interrupt Setting
     **********************************************************************/
-    AdcbRegs.ADCINTSEL1N2.bit.INT1SEL   = INTSELEOC5;   //end of ADCA EOC5 will set INT1 flag
+    AdcbRegs.ADCINTSEL1N2.bit.INT1SEL   = INTSELEOC5;   //end of ADCB EOC5 will set INT1 flag
     AdcbRegs.ADCINTSEL1N2.bit.INT1E     = 1;            //enable INT1 flag
     AdcbRegs.ADCINTFLGCLR.bit.ADCINT1   = 1;            //make sure INT1 flag is cleared
 
@@ -194,5 +195,7 @@ void BswAdcIsrCalc()
 //
 //    }
 }
+
+
 
 
