@@ -32,6 +32,11 @@ typedef struct {
     float Cnt;
 }FM_Tri;
 #define FM_Tri_defaults { 0.f,0.f,0.f,0.f,0.f }
+
+typedef enum {
+    Fast = 0,
+    Slow = 1
+}Mode;
 /*============================================================================
 	Global variables
 ============================================================================*/
@@ -135,8 +140,9 @@ float gfFMModulationFreq_Nom = 1e3;
 float gfFMModulationFreq_Slow = 200;        //Modulation duration(frequency)
 float gfFMModulationFreq_Fast = 10e3;
 Uint8 Flag_CntFMDir = 0U;
+Mode Mode_mf = Slow;
 
-extern float Testrandom = 0.f;
+Uint8 Test = 0U;
 
 /*============================================================================
 	Private Variables/Constants
@@ -328,11 +334,11 @@ void CtrPfcHalfCycleDet(void)
     if (giTest_type == 0)
     {
         //------------------------------DeadBand start ÁöÁ¡, HSSW Disable----------------------------
-        if ((gfThetaDeg_Grid >= -176.0f) && (gfThetaDeg_Grid < -5.0f))
+        if ((gfThetaDeg_Grid >= -178.0f) && (gfThetaDeg_Grid < -9.0f))
         {
             giflag_PosCycle = TRUE;
             giflag_NegCycle = FALSE;
-            if (gfThetaDeg_Grid <= -173.0f)
+            if (gfThetaDeg_Grid <= -175.0f)
             {
                 giFlag_HSSW_Deadzone = FALSE;
                 giFlag_LSSW_Deadzone = TRUE;
@@ -343,11 +349,11 @@ void CtrPfcHalfCycleDet(void)
                 giFlag_LSSW_Deadzone = FALSE;
             }
         }
-        else if ((gfThetaDeg_Grid >= 4.0f) && (gfThetaDeg_Grid < 175.0f))
+        else if ((gfThetaDeg_Grid >= 2.0f) && (gfThetaDeg_Grid < 171.0f))
         {
             giflag_PosCycle = FALSE;
             giflag_NegCycle = TRUE;
-            if (gfThetaDeg_Grid <= 7.f)
+            if (gfThetaDeg_Grid <= 5.f)
             {
                 giFlag_HSSW_Deadzone = FALSE;
                 giFlag_LSSW_Deadzone = TRUE;
@@ -374,21 +380,6 @@ void CtrPfcHalfCycleDet(void)
         giFlag_HSSW_Deadzone = FALSE;
     }
 
-//    if (giflag_PosCycle == TRUE && giflag_NegCycle == FALSE && giFlag_LSSW_Deadzone == FALSE)
-//    {
-//        ItrCom_Gpio43En();
-//        ItrCom_Gpio44Dis();
-//    }
-//    else if (giflag_NegCycle == TRUE && giflag_PosCycle == FALSE && giFlag_LSSW_Deadzone == FALSE)
-//    {
-//        ItrCom_Gpio43Dis();
-//        ItrCom_Gpio44En();
-//    }
-//    else
-//    {
-//        ItrCom_Gpio43Dis();
-//        ItrCom_Gpio44Dis();
-//    }
 }
 
 
@@ -499,8 +490,8 @@ void CtrPfcDcLinkVoltCtr()
 			fVPfcDcLinkRef = fVPfcDcLinkCmd;
 		}
 		gfVPfcDcLinkRef = fVPfcDcLinkRef;
-		gfVPfcDcLinkRef = LIMIT_MAX(fVPfcDcLinkRef, gfVPfcDcLinkRefMaxCal);
-		gfVPfcDcLinkRef = LIMIT_MIN(fVPfcDcLinkRef, gfVPfcDcLinkRefMinCal);
+        gfVPfcDcLinkRef = LIMIT_MAX(fVPfcDcLinkRef, gfVPfcDcLinkRefMaxCal);
+        gfVPfcDcLinkRef = LIMIT_MIN(fVPfcDcLinkRef, gfVPfcDcLinkRefMinCal);
 	
 //		gPiVPfcDcLink.Ref = gfVPfcDcLinkRef;
 //		gPiVPfcDcLink.Fdb = gfVPfcDcLinkFilter;
@@ -588,7 +579,7 @@ void CtrPfcCurrCtr()
 		gfPV2GRef = 0.0f;
 
 		//FdiagApi_ChagePfcCurrCtrState(CURRCTRSTATE_NORMAL);   //simulation
-		if ((SeqApi_GetInternalMainState() == STAT_NORMAL_STATE) && (FdiagApi_GetRlyState() == RLY_ON) /*&& (FdiagApi_GetPfcDcLinkVoltCtrState() == VOLTCTRSTATE_NORMAL)*/)
+		if ((SeqApi_GetInternalMainState() == STAT_NORMAL_STATE) && (FdiagApi_GetRlyState() == RLY_ON) && (FdiagApi_GetPfcDcLinkVoltCtrState() == VOLTCTRSTATE_NORMAL))
         {
             FdiagApi_ChagePfcCurrCtrState(CURRCTRSTATE_NORMAL);
         }
@@ -596,7 +587,7 @@ void CtrPfcCurrCtr()
 
 		break;
 	case CURRCTRSTATE_NORMAL:
-		if ((SeqApi_GetInternalMainState() != STAT_NORMAL_STATE) || (FdiagApi_GetRlyState() != RLY_ON) /*|| (FdiagApi_GetPfcDcLinkVoltCtrState() == VOLTCTRSTATE_NORMAL)*/)
+		if ((SeqApi_GetInternalMainState() != STAT_NORMAL_STATE) || (FdiagApi_GetRlyState() != RLY_ON) || (FdiagApi_GetPfcDcLinkVoltCtrState() != VOLTCTRSTATE_NORMAL))
 		{
 			FdiagApi_ChagePfcCurrCtrState(CURRCTRSTATE_INHIBIT);
 			ItrCom_DisablePfcPWM();
@@ -668,6 +659,27 @@ void CtrPfcCurrCtr()
 				    gFMTriNom.mf = gfFMModulationFreq_Nom;
 				    CtrPfcFmTriModulation(&gFMTriNom);
 				    gfPfcFreq = gFMTriNom.freq;
+
+//				    if((gfPfcFreq >= (gfFMFreqCenter - 0.5*gfFMFreqDelta)) && (gfPfcFreq < (gfFMFreqCenter - 0.25*gfFMFreqDelta)))
+//                    {
+//                        ItrCom_Gpio43Dis();
+//                        ItrCom_Gpio44Dis();
+//                    }
+//                    else if ((gfPfcFreq >= (gfFMFreqCenter - 0.25*gfFMFreqDelta)) && (gfPfcFreq < gfFMFreqCenter))
+//                    {
+//                        ItrCom_Gpio43En();
+//                        ItrCom_Gpio44Dis();
+//                    }
+//                    else if ((gfPfcFreq >= gfFMFreqCenter) && (gfPfcFreq < (gfFMFreqCenter + 0.25*gfFMFreqDelta)))
+//                    {
+//                        ItrCom_Gpio43Dis();
+//                        ItrCom_Gpio44En();
+//                    }
+//                    else if ((gfPfcFreq >= (gfFMFreqCenter + 0.25*gfFMFreqDelta)) && (gfPfcFreq < (gfFMFreqCenter + 0.5*gfFMFreqDelta)))
+//                    {
+//                        ItrCom_Gpio43En();
+//                        ItrCom_Gpio44En();
+//                    }
 				}
 				else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 1U && giRandomSSFM_inhibit == 0U)
 				{
@@ -720,6 +732,27 @@ void CtrPfcCurrCtr()
                     gFMTriNom.df = gfFMFreqDelta;
                     gFMTriNom.mf = gfFMModulationFreq_Nom;
                     CtrPfcFmTriModulation(&gFMTriNom);
+
+//                    if((gfPfcFreq >= (gfFMFreqCenter - 0.5*gfFMFreqDelta)) && (gfPfcFreq < (gfFMFreqCenter - 0.25*gfFMFreqDelta)))
+//                    {
+//                        ItrCom_Gpio43Dis();
+//                        ItrCom_Gpio44Dis();
+//                    }
+//                    else if ((gfPfcFreq >= (gfFMFreqCenter - 0.25*gfFMFreqDelta)) && (gfPfcFreq < gfFMFreqCenter))
+//                    {
+//                        ItrCom_Gpio43En();
+//                        ItrCom_Gpio44Dis();
+//                    }
+//                    else if ((gfPfcFreq >= gfFMFreqCenter) && (gfPfcFreq < (gfFMFreqCenter + 0.25*gfFMFreqDelta)))
+//                    {
+//                        ItrCom_Gpio43Dis();
+//                        ItrCom_Gpio44En();
+//                    }
+//                    else if ((gfPfcFreq >= (gfFMFreqCenter + 0.25*gfFMFreqDelta)) && (gfPfcFreq < (gfFMFreqCenter + 0.5*gfFMFreqDelta)))
+//                    {
+//                        ItrCom_Gpio43En();
+//                        ItrCom_Gpio44En();
+//                    }
                 }
                 else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 1U && giRandomSSFM_inhibit == 0U)
                 {
@@ -771,6 +804,7 @@ void CtrPfcSsfmPrps(Uint8 order)
 //    float fVAcVolt = MonApi_GetVolt(VoltSnsrGrid);
 //    float fVDcLinkVolt = MonApi_GetVolt(VoltSnsrDCLink);
     float fVAcVolt = MonApi_GetVoltSwLpf(VoltSnsrGrid);
+//    float fVAcVolt = gfVGrid_Mag_LPF * sinf(gfTheta_Grid_Comp);
     float fVDcLinkVolt = MonApi_GetVoltSwLpf(VoltSnsrDCLink);
 
 //    float factor = 2 * order * PI * fVAcVolt / fVDcLinkVolt;
@@ -783,27 +817,31 @@ void CtrPfcSsfmPrps(Uint8 order)
     gFmTriSlow.df = gfFMFreqDelta;
     gFmTriSlow.mf = gfFMModulationFreq_Slow;
 
-//    if ((factor >= (11*PI/6)) || (factor <= (PI/6)))
-//    {
-//        CtrPfcFmTriModulation(&gFmTriFast);
-//    }
-//    else
-//    {
-//        CtrPfcFmTriModulation(&gFmTriSlow);
-//    }
+    if (Mode_mf == Fast)
+    {
+        if (factor >= -0.45)     Mode_mf = Slow;
+        else                    Mode_mf = Fast;
+    }
+    else if (Mode_mf == Slow)
+    {
+        if (factor <= -0.5)     Mode_mf = Fast;
+        else                    Mode_mf = Slow;
+    }
 
-    if (factor >= -0.5)
+    if (Mode_mf == Slow)
     {
         CtrPfcFmTriModulation(&gFmTriSlow);
-        ItrCom_Gpio43En();
-        ItrCom_Gpio44Dis();
+//        ItrCom_Gpio43En();
+//        ItrCom_Gpio44Dis();
     }
-    else if(factor < -0.5)
+    else if(Mode_mf == Fast)
     {
         CtrPfcFmTriModulation(&gFmTriFast);
-        ItrCom_Gpio43Dis();
-        ItrCom_Gpio44En();
+//        ItrCom_Gpio43Dis();
+//        ItrCom_Gpio44En();
     }
+
+
 
 }
 
@@ -854,6 +892,27 @@ void CtrPfcFmRandomModulation(float fsw_center, float fsw_delta)
     fsw = GetRandom(fmax, fmin);
     ItrCom_SetPfcFreqUpDownCnt(1, fsw);
     gfPfcFreq = fsw;
+
+//    if((fsw >= fmin) && (fsw < (fmin + 0.25*fsw_delta)))
+//    {
+//        ItrCom_Gpio43Dis();
+//        ItrCom_Gpio44Dis();
+//    }
+//    else if ((fsw >= (fmin + 0.25*fsw_delta)) && (fsw < fsw_center))
+//    {
+//        ItrCom_Gpio43En();
+//        ItrCom_Gpio44Dis();
+//    }
+//    else if ((fsw >= fsw_center) && (fsw < (fsw_center + 0.25*fsw_delta)))
+//    {
+//        ItrCom_Gpio43Dis();
+//        ItrCom_Gpio44En();
+//    }
+//    else if ((fsw >= (fsw_center + 0.25*fsw_delta)) && (fsw < fmax))
+//    {
+//        ItrCom_Gpio43En();
+//        ItrCom_Gpio44En();
+//    }
 }
 
 /*----------------------------------------------------------------------------

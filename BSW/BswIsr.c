@@ -51,15 +51,19 @@ __interrupt void adcb1_isr()
 {
     CntCtrISR++;
 
-//    EPwm3Regs.TZCLR.bit.OST                 = 1;
-//    EPwm4Regs.TZCLR.bit.OST                 = 1;
+        BswApi_Gpio43En();
 
 //    DELAY_US(15);
-//    BswAdcIsrOffsetCalc();
-//    BswApi_Gpio43En();
-    BswAdcIsrCalc();
-    ItrCom_AswIsrCtr();
-//    BswApi_Gpio43Dis();
+    BswAdcIsrOffsetCalc();
+
+    if(giAdcoffsetCplFlag == TRUE)
+    {
+        BswAdcIsrCalc();
+        ItrCom_AswIsrCtr();
+
+    }
+
+    BswApi_Gpio43Dis();
 
     AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //clear INT1 flag
     //

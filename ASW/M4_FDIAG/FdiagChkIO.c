@@ -172,15 +172,15 @@ void FdiagChkIO_RunCurrSnsrState(Uint16 SnsrNum)
             TIMER_RESET(giCurrSnsr_RationalFlt_Timer[SnsrNum]);
             FdiagChkIO_ChangeCurrSnsrState(SnsrNum, ICCUCURRSNSR_NORMAL);
         }
-            break;
-        case ICCUCURRSNSR_VOLTLO_FLT:
-            break;
-        case ICCUCURRSNSR_VOLTHI_FLT:
-            break;
-        case ICCUCURRSNSR_RATIONAL_FLT:
-            break;
-        default:
-            break;
+        break;
+    case ICCUCURRSNSR_VOLTLO_FLT:
+        break;
+    case ICCUCURRSNSR_VOLTHI_FLT:
+        break;
+    case ICCUCURRSNSR_RATIONAL_FLT:
+        break;
+    default:
+        break;
     }
 
 }

@@ -10,6 +10,7 @@
 ============================================================================*/
 #include "BswCommon.h"
 #include "BswTask.h"
+#include "BswAdc.h"
 #include "../RTE/ItrComAswtoBsw.h"
 
 /*============================================================================
@@ -47,26 +48,26 @@ Uint32 CntTask100ms;
 void BswTask100us()
 {
     CntTask100us++;
-    ItrCom_AswTask100us();
+    if (giAdcoffsetCplFlag == TRUE)     ItrCom_AswTask100us();
 //    DELAY_US(800);
 }
 
 void BswTask1ms()
 {
     CntTask1ms++;
-    ItrCom_AswTask1ms();
+    if (giAdcoffsetCplFlag == TRUE)     ItrCom_AswTask1ms();
 //    DELAY_US(800);
 }
 void BswTask10ms()
 {
     CntTask10ms++;
-    ItrCom_AswTask10ms();
+    if (giAdcoffsetCplFlag == TRUE)     ItrCom_AswTask10ms();
 }
 
 void BswTask100ms()
 {
     CntTask100ms++;
-    ItrCom_AswTask100ms();
+    if (giAdcoffsetCplFlag == TRUE)     ItrCom_AswTask100ms();
 
 }
 
