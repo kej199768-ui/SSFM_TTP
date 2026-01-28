@@ -104,26 +104,26 @@ void InitAdcConfig()
     // Inductor Current
     AdcbRegs.ADCSOC0CTL.bit.CHSEL   = ADC_CHANNEL_0;    //ADCA SOC0 will convert pin U1 (ADCA0)
     AdcbRegs.ADCSOC0CTL.bit.ACQPS   = acqps;            //sample window is 100 SYSCLK cycles
-    AdcbRegs.ADCSOC0CTL.bit.TRIGSEL = ADCTRIG5;         //trigger on ePWM1 SOCA
+    AdcbRegs.ADCSOC0CTL.bit.TRIGSEL = ADCTRIG6;         //trigger on ePWM1 SOCA
     AdcbRegs.ADCSOC1CTL.bit.CHSEL   = ADC_CHANNEL_0;    //ADCA SOC0 will convert pin U1
     AdcbRegs.ADCSOC1CTL.bit.ACQPS   = acqps;            //sample window is 100 SYSCLK cycles
-    AdcbRegs.ADCSOC1CTL.bit.TRIGSEL = ADCTRIG6;         //trigger on ePWM1 SOCB
+    AdcbRegs.ADCSOC1CTL.bit.TRIGSEL = ADCTRIG5;         //trigger on ePWM1 SOCB
 
     // Input Voltage
     AdcbRegs.ADCSOC2CTL.bit.CHSEL   = ADC_CHANNEL_3;    //ADCA SOC2 will convert pin T2 (ADCA3)
     AdcbRegs.ADCSOC2CTL.bit.ACQPS   = acqps;
-    AdcbRegs.ADCSOC2CTL.bit.TRIGSEL = ADCTRIG5;
+    AdcbRegs.ADCSOC2CTL.bit.TRIGSEL = ADCTRIG6;
     AdcbRegs.ADCSOC3CTL.bit.CHSEL   = ADC_CHANNEL_3;
     AdcbRegs.ADCSOC3CTL.bit.ACQPS   = acqps;
-    AdcbRegs.ADCSOC3CTL.bit.TRIGSEL = ADCTRIG6;
+    AdcbRegs.ADCSOC3CTL.bit.TRIGSEL = ADCTRIG5;
 
     // Output Voltage
     AdcbRegs.ADCSOC4CTL.bit.CHSEL   = ADC_CHANNEL_4;    //ADCA SOC4 will convert pin U3 (ADCA4)
     AdcbRegs.ADCSOC4CTL.bit.ACQPS   = acqps;
-    AdcbRegs.ADCSOC4CTL.bit.TRIGSEL = ADCTRIG5;
+    AdcbRegs.ADCSOC4CTL.bit.TRIGSEL = ADCTRIG6;
     AdcbRegs.ADCSOC5CTL.bit.CHSEL   = ADC_CHANNEL_4;
     AdcbRegs.ADCSOC5CTL.bit.ACQPS   = acqps;
-    AdcbRegs.ADCSOC5CTL.bit.TRIGSEL = ADCTRIG6;
+    AdcbRegs.ADCSOC5CTL.bit.TRIGSEL = ADCTRIG5;
 
     /**********************************************************************
       ADC Interrupt Setting

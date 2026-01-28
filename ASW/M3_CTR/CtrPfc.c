@@ -100,6 +100,7 @@ Uint8 giFlag_IPfcLCtrlCpl_Delay = 0U;
 Uint8 giFlag_IPfcLCtrlCpl		= 0U;
 float gfPosDitheringDuty        = 0.05f;
 float gfNegDitheringDuty        = 0.95f;
+float gfTs_ILCtr_delay          = 1.587e-5f;
 
 //V2X control
 float gffV2L					= 0.0f;
@@ -334,7 +335,7 @@ void CtrPfcHalfCycleDet(void)
     if (giTest_type == 0)
     {
         //------------------------------DeadBand start ÁöÁ¡, HSSW Disable----------------------------
-        if ((gfThetaDeg_Grid >= -178.0f) && (gfThetaDeg_Grid < -9.0f))
+        if ((gfThetaDeg_Grid >= -178.0f) && (gfThetaDeg_Grid < -10.0f))
         {
             giflag_PosCycle = TRUE;
             giflag_NegCycle = FALSE;
@@ -349,7 +350,7 @@ void CtrPfcHalfCycleDet(void)
                 giFlag_LSSW_Deadzone = FALSE;
             }
         }
-        else if ((gfThetaDeg_Grid >= 2.0f) && (gfThetaDeg_Grid < 171.0f))
+        else if ((gfThetaDeg_Grid >= 2.0f) && (gfThetaDeg_Grid < 170.0f))
         {
             giflag_PosCycle = FALSE;
             giflag_NegCycle = TRUE;
@@ -525,6 +526,8 @@ void CtrPfcCurrCtr()
 	float fVGrid = MonApi_GetVolt(VoltSnsrGrid);
 //	float Ts_ILCtr = 1.429e-5f;
 	float Ts_ILCtr = MonApi_GetISRTS();
+//	float Ts_ILCtr = 0.5f * (gfTs_ILCtr_delay + MonApi_GetISRTS());
+	gfTs_ILCtr_delay = MonApi_GetISRTS();
 	float fIPfcL[CurrPfcSnsrNum] = { 0.0f, };
 	float fVGrid_Rms = 0;
 	if (giTest_type == 0)       { fVGrid_Rms = gfVGrid_Mag_LPF * INVSqrt2; }  //AC
@@ -786,6 +789,7 @@ void CtrPfcCurrCtr()
 			ItrCom_PfcLSSw_DeadBand();
 
 		}
+
 		break;
 	case CURRCTRSTATE_FLT:
 		break;
