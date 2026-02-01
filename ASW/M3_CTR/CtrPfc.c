@@ -525,8 +525,8 @@ void CtrPfcCurrCtr()
 
 	float fVGrid = MonApi_GetVolt(VoltSnsrGrid);
 //	float Ts_ILCtr = 1.429e-5f;
-	float Ts_ILCtr = MonApi_GetISRTS();
-//	float Ts_ILCtr = 0.5f * (gfTs_ILCtr_delay + MonApi_GetISRTS());
+//	float Ts_ILCtr = MonApi_GetISRTS();
+    float Ts_ILCtr = gfTs_ILCtr_delay;
 	gfTs_ILCtr_delay = MonApi_GetISRTS();
 	float fIPfcL[CurrPfcSnsrNum] = { 0.0f, };
 	float fVGrid_Rms = 0;
@@ -645,6 +645,7 @@ void CtrPfcCurrCtr()
 			}
 			else
 			{
+		        gPiIPfcL[CurrSnsrPhase].Tsamp   = Ts_ILCtr;
 				gPiIPfcL[CurrSnsrPhase].Kp = fInCurrPIKp;
 				gPiIPfcL[CurrSnsrPhase].Ki = fInCurrPIKi;
 				gPiIPfcL[CurrSnsrPhase].Ka = fInCurrPIKa;
@@ -719,6 +720,7 @@ void CtrPfcCurrCtr()
 			}
 			else
 			{
+		        gPiIPfcL[CurrSnsrPhase].Tsamp   = Ts_ILCtr;
 				gPiIPfcL[CurrSnsrPhase].Kp = fInCurrPIKp;
 				gPiIPfcL[CurrSnsrPhase].Ki = fInCurrPIKi;
 				gPiIPfcL[CurrSnsrPhase].Ka = fInCurrPIKa;
