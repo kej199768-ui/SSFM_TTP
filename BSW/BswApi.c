@@ -12,6 +12,7 @@
 #include "BswIsr.h"
 #include "BswTask.h"
 #include "BswPwm.h"
+#include "BswSpi.h"
 #include "BswGpio.h"
 #include "BswCal.h"
 
@@ -46,6 +47,8 @@ float BswApi_GetCurr(Uint8 SnsrNum)                         {return gfCurrCal[Sn
 float BswApi_GetVolt(Uint8 SnsrNum)                         {return gfVoltCal[SnsrNum];}
 float BswApi_GetCurrRaw(Uint8 SnsrNum)                      {return gfCurrRaw[SnsrNum];}
 float BswApi_GetVoltRaw(Uint8 SnsrNum)                      {return gfVoltRaw[SnsrNum];}
+
+void BswApi_SetDACA(Uint8 ch, Uint16 data)                { BswSpi_SetDACA(ch, data); }
 
 float BswApi_GetISRTS()                                     { return gfISRTScal; }
 void BswApi_ChangeISRTS(float EvtNum, float Freq)           { BswCal_ChangeIsrTs(EvtNum, Freq); }

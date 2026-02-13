@@ -72,6 +72,8 @@ float ItrCom_GetVoltRaw(Uint8 SnsrNum)                  { return BswApi_GetVoltR
 //float ItrCom_GetVObcOutRefCalSimul()                    { return gfVObcOutRefCalSimul;}
 //float ItrCom_GetVLdcOutRefCalSimul()                    { return gfVObcOutRefCalSimul; }
 
+void ItrCom_SetDACA(Uint8 ch, Uint8 data)              {BswApi_SetDACA(ch, data);}
+
 float ItrCom_GetISRTS()                                 { return BswApi_GetISRTS(); }
 
 //void ItrCom_SetPwmPhase(Uint8 ch, float NomalizedPhase)         { BswApi_SetPwmPhase(ch, NomalizedPhase); }

@@ -1,17 +1,14 @@
 /*
- * BswTask.c
+ * BswSpi.h
  *
- *  Created on: 2021. 12. 22.
- *      Author: IPCL
+ *  Created on: 2022. 11. 29.
+ *      Author: poweryhs
  */
 
 /*============================================================================
     Includes
 ============================================================================*/
 #include "BswCommon.h"
-#include "BswTask.h"
-#include "BswAdc.h"
-#include "../RTE/ItrComAswtoBsw.h"
 
 /*============================================================================
     Macros
@@ -28,50 +25,11 @@
 /*============================================================================
     Global variables
 ============================================================================*/
-Uint32 CntTask100us;
-Uint32 CntTask1ms;
-Uint32 CntTask10ms;
-Uint32 CntTask100ms;
-
-
-/*============================================================================
-    Private Variables/Constants
-============================================================================*/
 
 /*============================================================================
     Function Prototypes
 ============================================================================*/
-
-/*============================================================================
-    Function Implementations
-============================================================================*/
-void BswTask100us()
-{
-    CntTask100us++;
-    if (giAdcoffsetCplFlag == TRUE)
-    {
-        ItrCom_AswTask100us();
-    }
-//    DELAY_US(800);
-}
-
-void BswTask1ms()
-{
-    CntTask1ms++;
-    if (giAdcoffsetCplFlag == TRUE)     ItrCom_AswTask1ms();
-//    DELAY_US(800);
-}
-void BswTask10ms()
-{
-    CntTask10ms++;
-    if (giAdcoffsetCplFlag == TRUE)     ItrCom_AswTask10ms();
-}
-
-void BswTask100ms()
-{
-    CntTask100ms++;
-    if (giAdcoffsetCplFlag == TRUE)     ItrCom_AswTask100ms();
-
-}
-
-
+void InitSpiDACConfig(void);
+void BswSpi_DACISR(void);
+void BswSpi_DAC100us(void);
+void BswSpi_SetDACA(Uint8 ch, Uint16 data);

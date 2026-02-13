@@ -9,6 +9,7 @@
 #include "BSW/BswAdc.h"
 #include "BSW/BswIsr.h"
 #include "BSW/BswTask.h"
+#include "BSW/BswSpi.h"
 
 /*============================================================================
      FLASH
@@ -84,10 +85,13 @@ void main(void)
     //Initializing Function
     InitPWMEnaFltGpioConfig();
     InitGpioInOutConfig();
+    InitSPIConfig();
+    InitSpiDACConfig();
     InitEPwm1Config();
     InitEPwm2Config();
     InitEPwm3Config();
     InitEPwm4Config();
+
     //InitEPwm5Config();
 
     //GPIO setting

@@ -129,7 +129,6 @@ void InitPWMEnaFltGpioConfig()
     GpioCtrlRegs.GPEDIR.bit.GPIO147  = 0;   // Input
 
     EDIS;
-
 }
 /*******************************************************************************************************
  * 기능 : GPIO 입출력 설정
@@ -190,6 +189,44 @@ void InitGpioInOutConfig()
     //===========================================================================
     
     EDIS;
+}
+
+void InitSPIConfig(void)
+{
+    EALLOW;
+
+    //===========================================================================
+    //SPI A MUX setting
+    //===========================================================================
+    GpioCtrlRegs.GPBPUD.bit.GPIO54 = 0;     // Enable pullup
+    GpioCtrlRegs.GPBMUX2.bit.GPIO54 = 1;    // SPIA_SIMO
+
+    GpioCtrlRegs.GPBPUD.bit.GPIO56 = 0;     // Enable pullup
+    GpioCtrlRegs.GPBMUX2.bit.GPIO56 = 1;    // SPIA_CLK
+    GpioCtrlRegs.GPBQSEL2.bit.GPIO56 = 3;
+
+    GpioCtrlRegs.GPBPUD.bit.GPIO57 = 0;     // Enable pullup
+    GpioCtrlRegs.GPBMUX2.bit.GPIO57 = 0;    // Basically SPIA_STEn. But using GPIO in ADC.c
+    GpioCtrlRegs.GPBDIR.bit.GPIO57 = 1;     // output
+    GpioDataRegs.GPBDAT.bit.GPIO57 = 1;     // Initial disable to transmit data (active low)
+    GpioCtrlRegs.GPBQSEL2.bit.GPIO57 = 3;
+
+    //===========================================================================
+    //SPI B MUX setting
+    //===========================================================================
+    GpioCtrlRegs.GPBPUD.bit.GPIO60 = 0;     // Enable pullup
+    GpioCtrlRegs.GPBMUX2.bit.GPIO60 = 1;    // SPIA_SIMO
+
+    GpioCtrlRegs.GPBPUD.bit.GPIO58 = 0;     // Enable pullup
+    GpioCtrlRegs.GPBMUX2.bit.GPIO58 = 1;    // SPIA_CLK
+    GpioCtrlRegs.GPBQSEL2.bit.GPIO58 = 3;
+
+    GpioCtrlRegs.GPBPUD.bit.GPIO59 = 0;     // Enable pullup
+    GpioCtrlRegs.GPBMUX2.bit.GPIO59 = 0;    // Basically SPIA_STEn. But using GPIO in ADC.c
+    GpioCtrlRegs.GPBDIR.bit.GPIO59 = 1;     // output
+    GpioDataRegs.GPBDAT.bit.GPIO59 = 1;     // Initial disable to transmit data (active low)
+    GpioCtrlRegs.GPBQSEL2.bit.GPIO59 = 3;
+
 }
 
 void BswGpio_EnableRly()

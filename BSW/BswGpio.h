@@ -39,6 +39,7 @@
 void InitGpioConfig(void);
 void InitPWMEnaFltGpioConfig(void);
 void InitGpioInOutConfig(void);
+void InitSPIConfig(void);
 
 void BswGpio_EnableRly(void);
 void BswGpio_DisableRly(void);

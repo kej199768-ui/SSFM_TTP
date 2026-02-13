@@ -11,6 +11,7 @@
 #include "BswIsr.h"
 #include "BswTask.h"
 #include "BswAdc.h"
+#include "BswSpi.h"
 #include "../RTE/ItrComAswtoBsw.h"
 
 
@@ -61,6 +62,7 @@ __interrupt void adcb1_isr()
         BswAdcIsrCalc();
         ItrCom_AswIsrCtr();
 
+        BswSpi_DACISR();
     }
 
     BswApi_Gpio43Dis();

@@ -139,6 +139,7 @@ float  gfIin_ref_test = 0.;
 Uint16 giNormalSSFM_inhibit = 0U;
 Uint16 giPrpsSSFM_inhibit = 0U;
 Uint16 giRandomSSFM_inhibit = 0U;
+Uint16 giSectorSSFM_inhibit = 0U;
 
 //SSFM Parameters
 FM_Tri gFMTriNom = FM_Tri_defaults;
@@ -186,6 +187,8 @@ void CtrPfcFmTriModulation(FM_Tri* in);                         // Triangular Fr
 void CtrPfcFmRandomModulation(float fsw_center, float fsw_delta);
 
 void CtrPfcSsfmSectorSelector(Uint8 order);
+void CtrlPfcSsfmSectorModulation(void);
+void CtrlPfcLinearModulation(FM_Linear* in);
 
 
 /*============================================================================
@@ -228,6 +231,9 @@ void CtrPfcTask100us(void) {
     {
         CtrPfcGridPLL();
         CtrPfcHalfCycleDet();
+
+        CtrPfcSsfmSectorSelector(3);
+        CtrlPfcSsfmSectorModulation();
     }
 }
 
@@ -691,22 +697,26 @@ void CtrPfcCurrCtr()
 				PI_Control_calc(&gPiIPfcL[CurrSnsrPhase]);
 
 				//Frequency Modulation
-				if(giNormalSSFM_inhibit == 1U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 0U)
+				if(giNormalSSFM_inhibit == 1U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 0U && giSectorSSFM_inhibit == 0U)
 				{
 				    gFMTriNom.fc = gfFMFreqCenter;
 				    gFMTriNom.df = gfFMFreqDelta;
 				    gFMTriNom.mf = gfFMModulationFreq_Nom;
 				    CtrPfcFmTriModulation(&gFMTriNom);
-				    gfPfcFreq = gFMTriNom.freq;
+				    ItrCom_SetPfcFreqUpDownCnt(1, gFMTriNom.freq);
 				}
-				else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 1U && giRandomSSFM_inhibit == 0U)
+				else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 1U && giRandomSSFM_inhibit == 0U && giSectorSSFM_inhibit == 0U)
 				{
 				    CtrPfcSsfmPrps(3);
 				}
-				else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 1U)
+				else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 1U && giSectorSSFM_inhibit == 0U)
 				{
 	                CtrPfcFmRandomModulation(gfFMFreqCenter, gfFMFreqDelta);
-				}//Frequency Modulation
+				}
+				else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 0U && giSectorSSFM_inhibit == 1U)
+                {
+				    ItrCom_SetPfcFreqUpDownCnt(1, gFMOptimize.fs);
+                }//Frequency Modulation
 
 				ItrCom_SetPfcPwmduty(1, TRUE, gPiIPfcL[CurrSnsrPhase].out);
 				giFlag_IPfcLCtrlCpl = TRUE;
@@ -747,20 +757,25 @@ void CtrPfcCurrCtr()
 				PI_Control_calc(&gPiIPfcL[CurrSnsrPhase]);
 
 				//Frequency Modulation
-				if(giNormalSSFM_inhibit == 1U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 0U)
+                if(giNormalSSFM_inhibit == 1U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 0U && giSectorSSFM_inhibit == 0U)
                 {
                     gFMTriNom.fc = gfFMFreqCenter;
                     gFMTriNom.df = gfFMFreqDelta;
                     gFMTriNom.mf = gfFMModulationFreq_Nom;
                     CtrPfcFmTriModulation(&gFMTriNom);
+                    ItrCom_SetPfcFreqUpDownCnt(1, gFMTriNom.freq);
                 }
-                else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 1U && giRandomSSFM_inhibit == 0U)
+                else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 1U && giRandomSSFM_inhibit == 0U && giSectorSSFM_inhibit == 0U)
                 {
                     CtrPfcSsfmPrps(3);
                 }
-                else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 1U)
+                else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 1U && giSectorSSFM_inhibit == 0U)
                 {
                     CtrPfcFmRandomModulation(gfFMFreqCenter, gfFMFreqDelta);
+                }
+                else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 0U && giSectorSSFM_inhibit == 1U)
+                {
+                    ItrCom_SetPfcFreqUpDownCnt(1, gFMOptimize.fs);
                 }//Frequency Modulation
 
 				ItrCom_SetPfcPwmduty(1, TRUE, gPiIPfcL[CurrSnsrPhase].out);
@@ -833,18 +848,13 @@ void CtrPfcSsfmPrps(Uint8 order)
     if (Mode_mf == Slow)
     {
         CtrPfcFmTriModulation(&gFmTriSlow);
-//        ItrCom_Gpio43En();
-//        ItrCom_Gpio44Dis();
+        ItrCom_SetPfcFreqUpDownCnt(1, gFmTriSlow.freq);
     }
     else if(Mode_mf == Fast)
     {
         CtrPfcFmTriModulation(&gFmTriFast);
-//        ItrCom_Gpio43Dis();
-//        ItrCom_Gpio44En();
+        ItrCom_SetPfcFreqUpDownCnt(1, gFmTriFast.freq);
     }
-
-
-
 }
 
 /*----------------------------------------------------------------------------
@@ -876,7 +886,6 @@ void CtrPfcFmTriModulation(FM_Tri* in)
         in->Cnt = CNTDOWN;
     }
 
-    ItrCom_SetPfcFreqUpDownCnt(1, in->freq);
     gfPfcFreq = in->freq;
 }
 
@@ -912,7 +921,7 @@ void CtrPfcSsfmSectorSelector(Uint8 order)
     fVPfcDcLinkCmd = LIMIT_MAX(fVPfcDcLinkCmd, gfVPfcDcLinkRefMaxCal);
 
     //Grid Phase
-    float fWGrid = gfWgrid
+    float fWGrid = gfWgrid;
     float fthetaGrid = gfTheta_Grid;
     float fthetaFm = gfThetaFM;
 
@@ -925,15 +934,17 @@ void CtrPfcSsfmSectorSelector(Uint8 order)
         guMmax = (Uint16)floorf(fFactor);
 
         //Each Phase of Minimum/Maximum Magnitude
-        for (int i = 0; i < guMmax; i++)
+        int j;
+        for (j = 0; j < guMmax; j++)
         {
-            gfMinThetaFm[i] = asinf((i) * finvFactor) - PI;
-            gfMaxThetaFm[i] = asinf((2*i + 1) * 0.5f * finvFactor) - PI;
+            gfMinThetaFm[j] = asinf((j) * finvFactor) - PI;
+            gfMaxThetaFm[j] = asinf((2*j + 1) * 0.5f * finvFactor) - PI;
         }
     }
     else if (giFlag_Ssfmparameter == TRUE)
     {
-        for (int i = 0; i < guMmax; i++)
+        int i;
+        for (i = 0; i < guMmax; i++)
         {
             if (i == 0)
             {
@@ -967,7 +978,7 @@ void CtrPfcSsfmSectorSelector(Uint8 order)
                 if ((fthetaFm >= gfMinThetaFm[guSector-1]) && (fthetaFm < gfMaxThetaFm[guSector]))
                 {
                     gFMOptimize.Cnt = CNTUP;
-                    gFMOptimize.dt = fabsf(gfMinThetaFm[guSector-1] - gfMaxThetaFm[guSector]) / fWGrid);
+                    gFMOptimize.dt = fabsf((gfMinThetaFm[guSector-1] - gfMaxThetaFm[guSector]) / fWGrid);
                 }
                 else if ((fthetaFm >= gfMaxThetaFm[guSector]) && (fthetaFm < gfMinThetaFm[guSector]))
                 {
@@ -1001,7 +1012,7 @@ void CtrPfcSsfmSectorSelector(Uint8 order)
                 if ((fthetaFm <= gfMinThetaFm[guSector]) && (fthetaFm > gfMaxThetaFm[guSector]))
                 {
                     gFMOptimize.Cnt = CNTUP;
-                    gFMOptimize.dt = fabsf(gfMinThetaFm[guSector-1] - gfMaxThetaFm[guSector]) / fWGrid);
+                    gFMOptimize.dt = fabsf((gfMinThetaFm[guSector-1] - gfMaxThetaFm[guSector]) / fWGrid);
                 }
                 else if ((fthetaFm <= gfMaxThetaFm[guSector]) && (fthetaFm > gfMinThetaFm[guSector-1]))
                 {
@@ -1015,10 +1026,53 @@ void CtrPfcSsfmSectorSelector(Uint8 order)
                 gFMOptimize.dt = fabsf((gfMinThetaFm[guSector-1] + (0.5f*PI)) / fWGrid);
             }
         }
+        ItrCom_SetDACA(0, 0.1f * guSector * 4095);
+
     }
     giFlag_Ssfmparameter = TRUE;
 
 }
+
+/*----------------------------------------------------------------------------
+    Func : Optimized Frequency Modulation / Frequency Modulation
+    Period : ISR
+    Parameter :
+----------------------------------------------------------------------------*/
+void CtrlPfcSsfmSectorModulation(void)
+{
+    //Parameter of Frequency Spectrum
+//    gFMOptimize.Ts = MonApi_GetISRTS();
+    gFMOptimize.Ts = Ts10k;
+    gFMOptimize.df = gfFMFreqDelta;
+    gFMOptimize.fc = gfFMFreqCenter;
+
+    CtrlPfcLinearModulation(&gFMOptimize);
+    if (giFlag_LSSW_Deadzone == TRUE)
+    {
+        gFMOptimize.fs = gfFMFreqCenter - (0.5f * gfFMFreqDelta);
+    }
+}
+
+/*----------------------------------------------------------------------------
+    Func : Linear Frequency Modulation
+    Period : Event
+    Parameter :
+----------------------------------------------------------------------------*/
+void CtrlPfcLinearModulation(FM_Linear* in)
+{
+    float fmax = in->fc + (0.5f * in->df);
+    float fmin = in->fc - (0.5f * in->df);
+
+    Uint16 UNcount = (Uint16)(in->dt / in->Ts);
+    float fFreqintv = in->df / UNcount;
+
+    if (in->Cnt == CNTUP)           { in->fs += fFreqintv; }
+    else if (in->Cnt == CNTDOWN)    { in->fs -= fFreqintv; }
+
+    if (in->fs <= fmin)             { in->fs = fmin; }
+    else if (in->fs >= fmax)        { in->fs = fmax; }
+}
+
 
 /*----------------------------------------------------------------------------
     Func : PWM output test

@@ -46,6 +46,8 @@ float ItrCom_GetTempVoltRaw(Uint8 SnsrNum);
 float ItrCom_GetVObcOutRefCalSimul();
 float ItrCom_GetVLdcOutRefCalSimul();
 
+void ItrCom_SetDACA(Uint8 ch, Uint8 data);
+
 float ItrCom_GetISRTS();
 
 void ItrCom_SetPwmPhase(Uint8 ch, float NomalizedPhase);

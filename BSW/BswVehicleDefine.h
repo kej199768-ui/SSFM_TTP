@@ -8,6 +8,7 @@
 #ifndef BSW_BSWVEHICLEDEFINE_H_
 #define BSW_BSWVEHICLEDEFINE_H_
 
+#define DACCHANNELNUM       4
 
 #define ADCCHANNELNUM       3
 #define CURRSNSRNUM         1
