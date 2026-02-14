@@ -72,7 +72,7 @@ void InitSpiDACConfig(void)
     SpiaRegs.SPICCR.bit.SPISWRESET = 1;     //ready to use SPI
 }
 
-void BswSpi_DACISR(void)
+void BswSpi_SetSpiA(void)
 {
     //SPI DAC A
     giSPIAdata[0] = 0x8000 + ((int)(giDACA[0]));
@@ -87,30 +87,6 @@ void BswSpi_DACISR(void)
 //    giSPIBdata[3] = 0xB000 + ((Uint16)(0.8f * giDACB[3]));
 
     for (giSPIdataindex=0; giSPIdataindex<DACCHANNELNUM; giSPIdataindex++)
-    {
-        SpiaRegs.SPITXBUF = giSPIAdata[giSPIdataindex];
-
-        GpioDataRegs.GPBCLEAR.bit.GPIO57 = 1;
-        DELAY_US(1.3);
-        GpioDataRegs.GPBSET.bit.GPIO57 = 1;
-    }
-}
-
-void BswSpi_DAC100us(void)
-{
-    //SPI DAC A
-    giSPIAdata[0] = 0x8000 + ((int)(0.2f * giDACA[0]));
-    giSPIAdata[1] = 0x9000 + ((int)(0.4f * giDACA[1]));
-    giSPIAdata[2] = 0xA000 + ((int)(0.6f * giDACA[2]));
-    giSPIAdata[3] = 0xB000 + ((int)(0.8f * giDACA[3]));
-
-//    //SPI DAC B
-//    giSPIBdata[0] = 0x8000 + ((Uint16)(0.2f * giDACB[0]));
-//    giSPIBdata[1] = 0x9000 + ((Uint16)(0.4f * giDACB[1]));
-//    giSPIBdata[2] = 0xA000 + ((Uint16)(0.6f * giDACB[2]));
-//    giSPIBdata[3] = 0xB000 + ((Uint16)(0.8f * giDACB[3]));
-
-    for (giSPIdataindex = 0; giSPIdataindex<DACCHANNELNUM; giSPIdataindex++)
     {
         SpiaRegs.SPITXBUF = giSPIAdata[giSPIdataindex];
 

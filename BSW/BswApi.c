@@ -48,7 +48,8 @@ float BswApi_GetVolt(Uint8 SnsrNum)                         {return gfVoltCal[Sn
 float BswApi_GetCurrRaw(Uint8 SnsrNum)                      {return gfCurrRaw[SnsrNum];}
 float BswApi_GetVoltRaw(Uint8 SnsrNum)                      {return gfVoltRaw[SnsrNum];}
 
-void BswApi_SetDACA(Uint8 ch, Uint16 data)                { BswSpi_SetDACA(ch, data); }
+void BswApi_SetSpiA()                                       { BswSpi_SetSpiA(); }
+void BswApi_SetDACA(Uint8 ch, Uint16 data)                  { BswSpi_SetDACA(ch, data); }
 
 float BswApi_GetISRTS()                                     { return gfISRTScal; }
 void BswApi_ChangeISRTS(float EvtNum, float Freq)           { BswCal_ChangeIsrTs(EvtNum, Freq); }

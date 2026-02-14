@@ -30,6 +30,5 @@
     Function Prototypes
 ============================================================================*/
 void InitSpiDACConfig(void);
-void BswSpi_DACISR(void);
-void BswSpi_DAC100us(void);
+void BswSpi_SetSpiA(void);
 void BswSpi_SetDACA(Uint8 ch, Uint16 data);

@@ -41,6 +41,7 @@ float BswApi_GetVolt(Uint8 SnsrNum);
 float BswApi_GetCurrRaw(Uint8 SnsrNum);
 float BswApi_GetVoltRaw(Uint8 SnsrNum);
 
+void BswApi_SetSpiA();
 void BswApi_SetDACA(Uint8 ch, Uint16 data);
 
 float BswApi_GetISRTS();

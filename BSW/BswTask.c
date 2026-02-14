@@ -11,6 +11,7 @@
 #include "BswCommon.h"
 #include "BswTask.h"
 #include "BswAdc.h"
+#include "BswApi.h"
 #include "../RTE/ItrComAswtoBsw.h"
 
 /*============================================================================
@@ -50,7 +51,10 @@ void BswTask100us()
     CntTask100us++;
     if (giAdcoffsetCplFlag == TRUE)
     {
+        BswApi_Gpio43En();
         ItrCom_AswTask100us();
+        BswApi_SetSpiA();
+        BswApi_Gpio43Dis();
     }
 //    DELAY_US(800);
 }

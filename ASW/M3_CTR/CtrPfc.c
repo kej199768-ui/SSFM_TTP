@@ -200,6 +200,7 @@ void CtrPfcIsrCtr(void) {
 	{
 	    if (giIController_inhibit == 1 || giController_inhibit == 1)
 	    {
+	        CtrlPfcSsfmSectorModulation();
 	        CtrPfcCurrCtr();
 	    }
 	    else if (giPwmTest_inhibit == 1)
@@ -233,7 +234,6 @@ void CtrPfcTask100us(void) {
         CtrPfcHalfCycleDet();
 
         CtrPfcSsfmSectorSelector(3);
-        CtrlPfcSsfmSectorModulation();
     }
 }
 
@@ -1026,7 +1026,8 @@ void CtrPfcSsfmSectorSelector(Uint8 order)
                 gFMOptimize.dt = fabsf((gfMinThetaFm[guSector-1] + (0.5f*PI)) / fWGrid);
             }
         }
-        ItrCom_SetDACA(0, 0.1f * guSector * 4095);
+        ItrCom_SetDACA(0, (fthetaFm+PI) * 1303);  //DACA A
+        ItrCom_SetDACA(2, 0.1f * gFMOptimize.Cnt * 4095);  //DACA C
 
     }
     giFlag_Ssfmparameter = TRUE;
@@ -1041,8 +1042,7 @@ void CtrPfcSsfmSectorSelector(Uint8 order)
 void CtrlPfcSsfmSectorModulation(void)
 {
     //Parameter of Frequency Spectrum
-//    gFMOptimize.Ts = MonApi_GetISRTS();
-    gFMOptimize.Ts = Ts10k;
+    gFMOptimize.Ts = MonApi_GetISRTS();
     gFMOptimize.df = gfFMFreqDelta;
     gFMOptimize.fc = gfFMFreqCenter;
 
@@ -1051,6 +1051,8 @@ void CtrlPfcSsfmSectorModulation(void)
     {
         gFMOptimize.fs = gfFMFreqCenter - (0.5f * gfFMFreqDelta);
     }
+//    ItrCom_SetDACA(2, 5e-5f * gFMOptimize.fs * 819);  //DACA C
+
 }
 
 /*----------------------------------------------------------------------------

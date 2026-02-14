@@ -52,7 +52,7 @@ __interrupt void adcb1_isr()
 {
     CntCtrISR++;
 
-        BswApi_Gpio43En();
+//        BswApi_Gpio43En();
 
 //    DELAY_US(15);
     BswAdcIsrOffsetCalc();
@@ -61,11 +61,9 @@ __interrupt void adcb1_isr()
     {
         BswAdcIsrCalc();
         ItrCom_AswIsrCtr();
-
-        BswSpi_DACISR();
     }
 
-    BswApi_Gpio43Dis();
+//    BswApi_Gpio43Dis();
 
     AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //clear INT1 flag
     //
