@@ -162,7 +162,9 @@ float gfMinThetaFm[10] = {0.f, };
 float gfMaxThetaFm[10] = {0.f, };
 Uint8 giFlag_Ssfmparameter = FALSE;
 Uint16 guSector = 0U;
-
+Uint8 giFlag_FMOptimize = FALSE;
+float gfVGridMag_Delay = 0.f;
+float gfVPfcDcLinkCmd_Delay = 0.f;
 
 Uint8 Test = 0U;
 
@@ -716,15 +718,13 @@ void CtrPfcCurrCtr()
 				else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 0U && giSectorSSFM_inhibit == 1U)
                 {
 				    ItrCom_SetPfcFreqUpDownCnt(1, gFMOptimize.fs);
+                    gfPfcFreq = gFMOptimize.fs;
                 }//Frequency Modulation
-
 				ItrCom_SetPfcPwmduty(1, TRUE, gPiIPfcL[CurrSnsrPhase].out);
 				giFlag_IPfcLCtrlCpl = TRUE;
-
 			}
 			if (giFlag_IPfcLCtrlCpl_Delay == TRUE)      //Positive cycle
 			{
-
 			    ItrCom_PfcHSPwmNormalMode();
 			    //Low speed switch control
 			    ItrCom_PfcLSSw_PosEn();
@@ -776,8 +776,8 @@ void CtrPfcCurrCtr()
                 else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 0U && giSectorSSFM_inhibit == 1U)
                 {
                     ItrCom_SetPfcFreqUpDownCnt(1, gFMOptimize.fs);
+                    gfPfcFreq = gFMOptimize.fs;
                 }//Frequency Modulation
-
 				ItrCom_SetPfcPwmduty(1, TRUE, gPiIPfcL[CurrSnsrPhase].out);
 				giFlag_IPfcLCtrlCpl = TRUE;
 				
@@ -802,7 +802,7 @@ void CtrPfcCurrCtr()
 			ItrCom_PfcLSSw_DeadBand();
 
 		}
-
+        ItrCom_SetDACA(0, gfPfcFreq * 0.04095);  //DACA A
 		break;
 	case CURRCTRSTATE_FLT:
 		break;
@@ -935,7 +935,7 @@ void CtrPfcSsfmSectorSelector(Uint8 order)
 
         //Each Phase of Minimum/Maximum Magnitude
         int j;
-        for (j = 0; j < guMmax; j++)
+        for (j = 0; j <= guMmax; j++)
         {
             gfMinThetaFm[j] = asinf((j) * finvFactor) - PI;
             gfMaxThetaFm[j] = asinf((2*j + 1) * 0.5f * finvFactor) - PI;
@@ -946,75 +946,41 @@ void CtrPfcSsfmSectorSelector(Uint8 order)
         int i;
         for (i = 0; i < guMmax; i++)
         {
-            if (i == 0)
-            {
-                if (fthetaFm <= gfMinThetaFm[i])     guSector = i;
-                else                                guSector = i + 1;
-            }
-            else
-            {
-                if ((fthetaFm <= gfMinThetaFm[i]) && (fthetaFm > gfMinThetaFm[i-1]))    guSector = i;
-                else if (fthetaFm > gfMinThetaFm[i])                                    guSector = i + 1;
-            }
+            if ((fthetaFm <= gfMinThetaFm[i+1]) && (fthetaFm > gfMinThetaFm[i]))    guSector = i;
+            else if (fthetaFm > gfMinThetaFm[i+1])                                  guSector = i + 1;
         }
 
         if (((fthetaGrid >= -PI) && (fthetaGrid < -0.5f * PI)) || ((fthetaGrid >= 0.f) && (fthetaGrid < 0.5f * PI)))
         {
-            if (guSector == 0)
+            if (guSector != guMmax)
             {
-                if (fthetaFm <= gfMaxThetaFm[guSector])
+                if ((fthetaFm >= gfMinThetaFm[guSector]) && (fthetaFm < gfMaxThetaFm[guSector]))
                 {
                     gFMOptimize.Cnt = CNTUP;
-                    gFMOptimize.dt = fabsf((gfMaxThetaFm[guSector] + PI) / fWGrid);
+                    gFMOptimize.dt = fabsf((gfMinThetaFm[guSector] - gfMaxThetaFm[guSector]) / fWGrid);
                 }
-                else
+                else if ((fthetaFm >= gfMaxThetaFm[guSector]) && (fthetaFm < gfMinThetaFm[guSector+1]))
                 {
                     gFMOptimize.Cnt = CNTDOWN;
-                    gFMOptimize.dt = fabsf((gfMaxThetaFm[guSector] - gfMinThetaFm[guSector]) / fWGrid);
-                }
-            }
-            else if ((guSector > 0) && (guSector <= guMmax))
-            {
-                if ((fthetaFm >= gfMinThetaFm[guSector-1]) && (fthetaFm < gfMaxThetaFm[guSector]))
-                {
-                    gFMOptimize.Cnt = CNTUP;
-                    gFMOptimize.dt = fabsf((gfMinThetaFm[guSector-1] - gfMaxThetaFm[guSector]) / fWGrid);
-                }
-                else if ((fthetaFm >= gfMaxThetaFm[guSector]) && (fthetaFm < gfMinThetaFm[guSector]))
-                {
-                    gFMOptimize.Cnt = CNTDOWN;
-                    gFMOptimize.dt = fabsf((gfMaxThetaFm[guSector] - gfMinThetaFm[guSector]) / fWGrid);
+                    gFMOptimize.dt = fabsf((gfMinThetaFm[guSector+1] - gfMaxThetaFm[guSector]) / fWGrid);
                 }
             }
             else if (guSector == guMmax)
             {
                 gFMOptimize.Cnt = CNTUP;
-                gFMOptimize.dt = fabsf((gfMinThetaFm[guSector-1] + (0.5f*PI)) / fWGrid);
+                gFMOptimize.dt = fabsf((gfMinThetaFm[guSector] + (0.5f*PI)) / fWGrid);
             }
         }
-        else if (((fthetaGrid >= -0.5f * PI) && (fthetaGrid < 0.f)) || ((fthetaGrid >= 0.5f * PI) && (fthetaGrid < PI)))
+        else if (((fthetaGrid >= -0.5f * PI) && (fthetaGrid < 0.f)) || ((fthetaGrid >= 0.5f * PI) && (fthetaGrid <= PI)))
         {
-            if (guSector == 0)
+            if (guSector != guMmax)
             {
-                if (fthetaFm >= gfMaxThetaFm[guSector])
+                if ((fthetaFm > gfMaxThetaFm[guSector]) && (fthetaFm <= gfMinThetaFm[guSector+1]))
                 {
                     gFMOptimize.Cnt = CNTUP;
-                    gFMOptimize.dt = fabsf((gfMaxThetaFm[guSector] + PI) / fWGrid);
+                    gFMOptimize.dt = fabsf((gfMinThetaFm[guSector+1] - gfMaxThetaFm[guSector]) / fWGrid);
                 }
-                else
-                {
-                    gFMOptimize.Cnt = CNTDOWN;
-                    gFMOptimize.dt = fabsf((gfMaxThetaFm[guSector] - gfMinThetaFm[guSector]) / fWGrid);
-                }
-            }
-            else if ((guSector > 0) && (guSector <= guMmax))
-            {
-                if ((fthetaFm <= gfMinThetaFm[guSector]) && (fthetaFm > gfMaxThetaFm[guSector]))
-                {
-                    gFMOptimize.Cnt = CNTUP;
-                    gFMOptimize.dt = fabsf((gfMinThetaFm[guSector-1] - gfMaxThetaFm[guSector]) / fWGrid);
-                }
-                else if ((fthetaFm <= gfMaxThetaFm[guSector]) && (fthetaFm > gfMinThetaFm[guSector-1]))
+                else if ((fthetaFm > gfMinThetaFm[guSector]) && (fthetaFm <= gfMaxThetaFm[guSector]))
                 {
                     gFMOptimize.Cnt = CNTDOWN;
                     gFMOptimize.dt = fabsf((gfMaxThetaFm[guSector] - gfMinThetaFm[guSector]) / fWGrid);
@@ -1023,15 +989,24 @@ void CtrPfcSsfmSectorSelector(Uint8 order)
             else if (guSector == guMmax)
             {
                 gFMOptimize.Cnt = CNTDOWN;
-                gFMOptimize.dt = fabsf((gfMinThetaFm[guSector-1] + (0.5f*PI)) / fWGrid);
+                gFMOptimize.dt = fabsf((gfMinThetaFm[guSector] + (0.5f*PI)) / fWGrid);
             }
         }
-        ItrCom_SetDACA(0, (fthetaFm+PI) * 1303);  //DACA A
-        ItrCom_SetDACA(2, 0.1f * gFMOptimize.Cnt * 4095);  //DACA C
-
+        ItrCom_SetDACA(2, guSector * 819);  //DACA C
     }
-    giFlag_Ssfmparameter = TRUE;
+    float fVGridMag_Diff = fabsf(fVGridMag - gfVGridMag_Delay);
+    float fVPfcDcLinkCmd_Diff = fabsf(fVPfcDcLinkCmd - gfVPfcDcLinkCmd_Delay);
 
+    if ((fVGridMag_Diff >= 15) || (fVPfcDcLinkCmd_Diff >= 30))
+    {
+        giFlag_Ssfmparameter = FALSE;
+    }
+    else
+    {
+        giFlag_Ssfmparameter = TRUE;
+    }
+    gfVGridMag_Delay = fVGridMag;
+    gfVPfcDcLinkCmd_Delay = fVPfcDcLinkCmd;
 }
 
 /*----------------------------------------------------------------------------
@@ -1046,13 +1021,18 @@ void CtrlPfcSsfmSectorModulation(void)
     gFMOptimize.df = gfFMFreqDelta;
     gFMOptimize.fc = gfFMFreqCenter;
 
-    CtrlPfcLinearModulation(&gFMOptimize);
-    if (giFlag_LSSW_Deadzone == TRUE)
+    if (giFlag_FMOptimize == TRUE)
     {
-        gFMOptimize.fs = gfFMFreqCenter - (0.5f * gfFMFreqDelta);
+        CtrlPfcLinearModulation(&gFMOptimize);
     }
-//    ItrCom_SetDACA(2, 5e-5f * gFMOptimize.fs * 819);  //DACA C
-
+    else if (giFlag_FMOptimize == FALSE)
+    {
+        if (gfTheta_Grid <= -0.993f * PI)
+        {
+            gFMOptimize.fs = gfFMFreqCenter - (0.5f * gfFMFreqDelta);
+            giFlag_FMOptimize = TRUE;
+        }
+    }
 }
 
 /*----------------------------------------------------------------------------
