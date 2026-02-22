@@ -24,7 +24,7 @@
 #define GATEHWFLT           0
 
 #define PWMFREQ             63000.f
-#define PWMTS               1.429e-5f
+#define PWMTS               1.587e-5f
 //#define PWMFREQ             53000.f
 //#define PWMTS               1.887e-5f
 #define ISRPWMEVTNUM        1.f

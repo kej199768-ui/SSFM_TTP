@@ -145,7 +145,7 @@ Uint16 giSectorSSFM_inhibit = 0U;
 FM_Tri gFMTriNom = FM_Tri_defaults;
 FM_Tri gFmTriFast = FM_Tri_defaults;
 FM_Tri gFmTriSlow = FM_Tri_defaults;
-float gfPfcFreq = 0.f;                  //PFC Switching frequency
+float gfPfcFreq = PWMFREQ;                  //PFC Switching frequency
 float gfFMFreqCenter = 63e3;            //Modulation Center frequency
 float gfFMFreqDelta = 20e3;             //Modulation frequency Min-Max Delta
 float gfFMModulationFreq_Nom = 1e3;
@@ -372,8 +372,6 @@ void CtrPfcGridPLL(void)
 ----------------------------------------------------------------------------*/
 void CtrPfcHalfCycleDet(void) 
 {
-
-
     if (giTest_type == 0)
     {
         //------------------------------DeadBand start ÁöÁ¡, HSSW Disable----------------------------
@@ -705,7 +703,7 @@ void CtrPfcCurrCtr()
 				    gFMTriNom.df = gfFMFreqDelta;
 				    gFMTriNom.mf = gfFMModulationFreq_Nom;
 				    CtrPfcFmTriModulation(&gFMTriNom);
-				    ItrCom_SetPfcFreqUpDownCnt(1, gFMTriNom.freq);
+				    gfPfcFreq = gFMTriNom.freq;
 				}
 				else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 1U && giRandomSSFM_inhibit == 0U && giSectorSSFM_inhibit == 0U)
 				{
@@ -717,9 +715,10 @@ void CtrPfcCurrCtr()
 				}
 				else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 0U && giSectorSSFM_inhibit == 1U)
                 {
-				    ItrCom_SetPfcFreqUpDownCnt(1, gFMOptimize.fs);
                     gfPfcFreq = gFMOptimize.fs;
-                }//Frequency Modulation
+                }
+                ItrCom_SetPfcFreqUpDownCnt(1, gfPfcFreq);
+				//Frequency Modulation
 				ItrCom_SetPfcPwmduty(1, TRUE, gPiIPfcL[CurrSnsrPhase].out);
 				giFlag_IPfcLCtrlCpl = TRUE;
 			}
@@ -763,7 +762,7 @@ void CtrPfcCurrCtr()
                     gFMTriNom.df = gfFMFreqDelta;
                     gFMTriNom.mf = gfFMModulationFreq_Nom;
                     CtrPfcFmTriModulation(&gFMTriNom);
-                    ItrCom_SetPfcFreqUpDownCnt(1, gFMTriNom.freq);
+                    gfPfcFreq = gFMTriNom.freq;
                 }
                 else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 1U && giRandomSSFM_inhibit == 0U && giSectorSSFM_inhibit == 0U)
                 {
@@ -775,9 +774,10 @@ void CtrPfcCurrCtr()
                 }
                 else if(giNormalSSFM_inhibit == 0U && giPrpsSSFM_inhibit == 0U && giRandomSSFM_inhibit == 0U && giSectorSSFM_inhibit == 1U)
                 {
-                    ItrCom_SetPfcFreqUpDownCnt(1, gFMOptimize.fs);
                     gfPfcFreq = gFMOptimize.fs;
-                }//Frequency Modulation
+                }
+                ItrCom_SetPfcFreqUpDownCnt(1, gfPfcFreq);
+                //Frequency Modulation
 				ItrCom_SetPfcPwmduty(1, TRUE, gPiIPfcL[CurrSnsrPhase].out);
 				giFlag_IPfcLCtrlCpl = TRUE;
 				
@@ -848,12 +848,12 @@ void CtrPfcSsfmPrps(Uint8 order)
     if (Mode_mf == Slow)
     {
         CtrPfcFmTriModulation(&gFmTriSlow);
-        ItrCom_SetPfcFreqUpDownCnt(1, gFmTriSlow.freq);
+        gfPfcFreq = gFmTriSlow.freq;
     }
     else if(Mode_mf == Fast)
     {
         CtrPfcFmTriModulation(&gFmTriFast);
-        ItrCom_SetPfcFreqUpDownCnt(1, gFmTriFast.freq);
+        gfPfcFreq = gFmTriSlow.freq;
     }
 }
 
@@ -885,8 +885,6 @@ void CtrPfcFmTriModulation(FM_Tri* in)
         in->freq = fmax;
         in->Cnt = CNTDOWN;
     }
-
-    gfPfcFreq = in->freq;
 }
 
 /*----------------------------------------------------------------------------
@@ -901,7 +899,6 @@ void CtrPfcFmRandomModulation(float fsw_center, float fsw_delta)
     float fmax = fsw_center + 0.5 * fsw_delta;
 
     fsw = GetRandom(fmax, fmin);
-    ItrCom_SetPfcFreqUpDownCnt(1, fsw);
     gfPfcFreq = fsw;
 }
 

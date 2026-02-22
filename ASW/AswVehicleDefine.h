@@ -126,8 +126,8 @@
 #define DeffBWPFCDCLinkVolt         10.0f       //[Hz] PFC DCLink BandWidth
 #define DeffBWPFCCurr               1000.0f        //[Hz] PFC Current BandWidth
 
-#define PWMFREQ             70000.f
-#define PWMTS               1.429e-5f
+#define PWMFREQ             63000.f
+#define PWMTS               1.587e-5f
 #define ISRPWMEVTNUM        1//4
 #define ISRFREQ             PWMFREQ/ISRPWMEVTNUM
 //#define ISRTS               PWMTS*ISRPWMEVTNUM
