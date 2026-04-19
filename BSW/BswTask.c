@@ -51,10 +51,8 @@ void BswTask100us()
     CntTask100us++;
     if (giAdcoffsetCplFlag == TRUE)
     {
-        BswApi_Gpio43En();
         ItrCom_AswTask100us();
         BswApi_SetSpiA();
-        BswApi_Gpio43Dis();
     }
 //    DELAY_US(800);
 }
