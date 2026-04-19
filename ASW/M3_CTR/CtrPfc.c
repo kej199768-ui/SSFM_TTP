@@ -1049,7 +1049,6 @@ void CtrPfcSsfmSectorSelector(Uint8 order)
                 }
             }
         }
-        ItrCom_SetDACA(2, guSector * 819);  //DACA C
     }
     float fVGridMag_Diff = fabsf(fVGridMag - gfVGridMag_Delay);
     float fVPfcDcLinkCmd_Diff = fabsf(fVPfcDcLinkCmd - gfVPfcDcLinkCmd_Delay);
